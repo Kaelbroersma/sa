@@ -193,90 +193,9 @@ export const handler: Handler = async (event) => {
     // Send the request
     const response = await makeRequest();
     
-    // Handle processor response
-    if (response.ok) {
-      const responseText = await response.text();
-
-      // Parse response based on content type
-      let processorResponse;
-      try {
-        // Check if response is HTML error message
-        if (responseText.includes('<html>')) {
-          // Extract error message from HTML
-          const errorMatch = responseText.match(/"([^"]+)"/);
-          const errorMessage = errorMatch ? errorMatch[1] : 'Unknown error';
-
-          // Update order with error status
-          const { error: updateError } = await supabase
-            .from('orders')
-            .update({
-              payment_status: 'failed',
-              payment_processor_response: {
-                error: errorMessage,
-                raw_response: responseText
-              }
-            })
-            .eq('order_id', orderId);
-
-          if (updateError) {
-            console.error('Failed to update order with error status:', {
-              timestamp: new Date().toISOString(),
-              orderId,
-              error: updateError
-            });
-          }
-
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({
-              success: false,
-              message: errorMessage,
-              orderId
-            })
-          };
-        }
-
-        // Try parsing as JSON first
-        try {
-          processorResponse = JSON.parse(responseText);
-        } catch {
-          // If not JSON, try parsing as key-value pairs
-          const separator = responseText.includes(';') ? ';' : ',';
-          
-          processorResponse = Object.fromEntries(
-            responseText.split(separator).map(pair => {
-              const [key, value] = pair.split('=').map(s => decodeURIComponent(s.trim()));
-              return [key, value];
-            })
-          );
-        }
-
-        // Validate response
-        if (processorResponse['Postback.OrderID'] !== orderId) {
-          throw new Error('Order ID mismatch in processor response');
-        }
-
-        // Update order with processor response
-        const { error: updateError } = await supabase
-          .from('orders')
-          .update({
-            payment_processor_response: processorResponse,
-            payment_status: processorResponse.Success === 'Y' ? 'paid' : 'failed'
-          })
-          .eq('order_id', orderId);
-
-        if (updateError) {
-          console.error('Failed to update order with processor response:', {
-            timestamp: new Date().toISOString(),
-            orderId,
-            error: updateError,
-            response: processorResponse
-          });
-        }
-      } catch (error) {
-        throw new Error('Invalid processor response format');
-      }
+    // Only check if the request was sent successfully
+    if (!response.ok) {
+      throw new Error('Failed to send payment request to processor');
     }
 
     // Return success response immediately
@@ -297,7 +216,7 @@ export const handler: Handler = async (event) => {
       message: error.message,
       stack: error.stack
     });
-
+    
     return {
       statusCode: 500,
       headers,
