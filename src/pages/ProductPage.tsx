@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertCircle, Loader } from 'lucide-react';
+import { AlertCircle, Loader, ChevronRight } from 'lucide-react';
 import { useMobileDetection } from '../components/MobileDetection';
 import { getImageUrl } from '../utils/imageUtils';
 import Breadcrumbs from '../components/Breadcrumbs';
+import { productService } from '../services/productService';
+import type { Category, Product } from '../types/database';
 
 interface ProductPageProps {
   title: string;
@@ -34,10 +36,39 @@ const ProductPage: React.FC<ProductPageProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMobileDetection();
+  const [subcategories, setSubcategories] = useState<Category[]>([]);
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
+  const [subcategoryError, setSubcategoryError] = useState<string | null>(null);
+  const [isParentCategory, setIsParentCategory] = useState(false);
 
   useEffect(() => {
-    clearProducts();
-    fetchProducts(categorySlug);
+    const fetchSubcategories = async () => {
+      try {
+        setLoadingSubcategories(true);
+        const result = await productService.getCategories();
+        if (result.error) throw new Error(result.error.message);
+        
+        // Find current category to check if it's a parent
+        const currentCategory = result.data?.find(cat => cat.slug === categorySlug);
+        const subs = result.data?.filter(cat => cat.parent_category_id === currentCategory?.category_id) || [];
+        
+        setIsParentCategory(subs.length > 0);
+        setSubcategories(subs);
+      } catch (error: any) {
+        setSubcategoryError(error.message);
+      } finally {
+        setLoadingSubcategories(false);
+      }
+    };
+
+    fetchSubcategories();
+  }, [categorySlug]);
+
+  useEffect(() => {
+    if (!isParentCategory) {
+      clearProducts();
+      fetchProducts(categorySlug);
+    }
   }, [categorySlug]);
 
   return (
@@ -91,6 +122,44 @@ const ProductPage: React.FC<ProductPageProps> = ({
             </motion.p>
           </div>
 
+          {/* Subcategories Grid */}
+          {isParentCategory && !loading && !error && (
+            <div className="mb-12">
+              {loadingSubcategories ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader className="w-8 h-8 text-tan animate-spin" />
+                </div>
+              ) : subcategoryError ? (
+                <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-8">
+                  <p className="text-red-400">{subcategoryError}</p>
+                </div>
+              ) : subcategories.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {subcategories.map((subcategory, index) => (
+                    <motion.div
+                      key={subcategory.category_id}
+                      className="bg-gunmetal p-6 rounded-sm shadow-luxury cursor-pointer group"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: index * 0.1 }}
+                      onClick={() => navigate(`/shop/${subcategory.slug}`)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-heading text-xl font-bold group-hover:text-tan transition-colors">
+                          {subcategory.name}
+                        </h3>
+                        <ChevronRight className="text-gray-400 group-hover:text-tan transition-colors" size={20} />
+                      </div>
+                      {subcategory.description && (
+                        <p className="text-gray-400 mt-2">{subcategory.description}</p>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
+
           {/* Loading State */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-12">
@@ -111,7 +180,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
           )}
 
           {/* Products Grid */}
-          {!loading && !error && (
+          {!loading && !error && !isParentCategory && (
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
               {products.map((product, index) => (
                 <motion.div

@@ -3,22 +3,20 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
-import { productService } from '../services/productService';
 import Logo from './Logo';
 import AuthButton from './Auth/AuthButton';
 import { useMobileDetection } from './MobileDetection';
+import type { Category } from '../types/database';
 
-interface Category {
-  name: string;
-  slug: string;
-  description: string | null;
+interface NavCategory extends Category {
+  icon?: string;
 }
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<NavCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
@@ -43,19 +41,46 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const result = await productService.getCategories();
-        if (result.data) {
-          setCategories(result.data);
-        }
-      } catch (error) {
+        const result = await callNetlifyFunction('getCategories');
+        if (result.error) throw new Error(result.error.message);
+        
+        // Filter out subcategories - only show top-level categories
+        const topLevelCategories = (result.data || []).filter(cat => !cat.parent_category_id);
+        
+        // Add icons for top-level categories
+        const categoriesWithIcons = topLevelCategories.map(cat => ({
+          ...cat,
+          icon: getCategoryIcon(cat.name)
+        }));
+        
+        setCategories(categoriesWithIcons);
+        setLoading(false);
+      } catch (error: any) {
         console.error('Failed to fetch categories:', error);
-      } finally {
         setLoading(false);
       }
     };
 
     fetchCategories();
   }, []);
+
+  // Helper function to get icon name based on category
+  const getCategoryIcon = (categoryName: string): string => {
+    switch (categoryName) {
+      case 'Carnimore Models':
+        return 'Gun';
+      case 'Duracoat':
+        return 'SprayCan';
+      case 'Merch':
+        return 'ShoppingBag';
+      case 'Optics':
+        return 'Crosshair';
+      case 'Accessories':
+        return 'Wrench';
+      default:
+        return 'Package';
+    }
+  };
 
   const navbarClasses = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
     isScrolled ? 'bg-primary bg-opacity-95 shadow-luxury' : 'bg-transparent'
@@ -124,9 +149,12 @@ const Navbar: React.FC = () => {
                         <button
                           key={category.slug}
                           onClick={() => handleCategoryClick(category.slug)}
-                          className="block w-full text-left px-4 py-2 text-white hover:bg-gunmetal hover:text-tan transition-colors"
+                          className="flex items-center w-full text-left px-4 py-2 text-white hover:bg-gunmetal hover:text-tan transition-colors"
                         >
+                          {category.icon && getIconComponent(category.icon)}
+                          <span className={category.icon ? 'ml-2' : ''}>
                           {category.name}
+                          </span>
                         </button>
                       ))
                     )}

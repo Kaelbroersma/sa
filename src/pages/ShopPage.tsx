@@ -4,15 +4,22 @@ import { useNavigate } from 'react-router-dom';
 import * as Icons from 'lucide-react';
 import { useProductStore } from '../store/productStore';
 import { useMobileDetection } from '../components/MobileDetection';
+import type { Category } from '../types/database';
 
 const ShopPage: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMobileDetection();
-  const { categories, loading, error, fetchCategories } = useProductStore();
+  const { categories: allCategories, loading, error, fetchCategories } = useProductStore();
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    const loadCategories = async () => {
+      await fetchCategories();
+      // Filter out subcategories - only show top-level categories
+      setCategories(allCategories.filter(cat => !cat.parent_category_id));
+    };
+    loadCategories();
+  }, [allCategories]);
 
   // Dynamic icon component lookup
   const getIconComponent = (iconName: string) => {
