@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import https from 'https';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Environment variables
 const EPN_ACCOUNT = process.env.EPN_ACCOUNT_NUMBER;
@@ -11,6 +11,35 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+// Helper function to get user ID from token
+async function getUserIdFromToken(authHeader: string | undefined, supabase: SupabaseClient) {
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.split('Bearer ')[1];
+  
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      console.error('Auth error:', {
+        timestamp: new Date().toISOString(),
+        error: error?.message
+      });
+      return null;
+    }
+
+    return user.id;
+  } catch (error) {
+    console.error('Token verification failed:', {
+      timestamp: new Date().toISOString(),
+      error
+    });
+    return null;
+  }
+}
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -26,130 +55,70 @@ export const handler: Handler = async (event) => {
     }
     
     const paymentData = JSON.parse(event.body);
-    const { 
+    const {
       orderId, 
       cardNumber, 
       expiryMonth, 
       expiryYear, 
       cvv, 
       amount, 
-      shippingAddress,
-      billingAddress,
-      items,
+      billingAddress, // Only validate billing info
       email,
       phone,
-      fflDealerInfo // New field for FFL dealer info
+      items,
+      shippingAddress,
+      fflDealerInfo
     } = paymentData;
 
-    // Get user ID from auth context if available
-    const userId = event.headers.authorization?.split('Bearer ')[1] || null;
+    // Only validate billing info
+    if (!cardNumber?.trim() || !expiryMonth?.trim() || !expiryYear?.trim() || !cvv?.trim()) {
+      throw new Error('Invalid payment information');
+    }
 
-    // Determine if order requires FFL based on provided info
-    const requiresFFL = !!fflDealerInfo;
+    if (!billingAddress?.address?.trim() || !billingAddress?.city?.trim() || 
+        !billingAddress?.state?.trim() || !billingAddress?.zipCode?.trim()) {
+      throw new Error('Invalid billing address');
+    }
 
-    // Format addresses for database
-    const formattedShippingAddress = requiresFFL ? 
-      // Use FFL address for firearm-only orders
-      [
-        fflDealerInfo.PREMISE_STREET,
-        fflDealerInfo.PREMISE_CITY,
-        fflDealerInfo.PREMISE_STATE,
-        fflDealerInfo.PREMISE_ZIP_CODE
-      ].filter(Boolean).join(', ') :
-      // Use provided shipping address for non-firearm orders
-      [
-        shippingAddress.address,
-        shippingAddress.city,
-        shippingAddress.state,
-        shippingAddress.zipCode
-      ].filter(Boolean).join(', ');
-
-    const formattedBillingAddress = billingAddress ? [
+    // Format billing address for database
+    const formattedBillingAddress = [
       billingAddress.address,
       billingAddress.city,
       billingAddress.state,
       billingAddress.zipCode
-    ].filter(Boolean).join(', ') : formattedShippingAddress;
+    ].filter(Boolean).join(', ');
 
-    // Validate environment variables
-    if (!EPN_ACCOUNT || !EPN_RESTRICT_KEY) {
-      throw new Error('Missing required environment variables');
-    }
-
-    // Validate required fields
-    if (!cardNumber?.trim() || !expiryMonth?.trim() || !expiryYear?.trim() || 
-        !cvv?.trim() || !amount || !orderId || 
-        !email?.trim() || !phone?.trim() ||
-        !billingAddress?.address?.trim() || !billingAddress?.city?.trim() ||
-        !billingAddress?.state?.trim() || !billingAddress?.zipCode?.trim()) {
-      throw new Error('Missing required fields');
-    }
-
-    // Validate shipping address if not using FFL address
-    if (!requiresFFL) {
-      if (!shippingAddress?.address?.trim() || !shippingAddress?.city?.trim() ||
-          !shippingAddress?.state?.trim() || !shippingAddress?.zipCode?.trim()) {
-        throw new Error('Shipping address is required for non-firearm items');
-      }
-    }
-
-    // Validate FFL info if provided
-    if (requiresFFL) {
-      if (!fflDealerInfo?.PREMISE_STREET || !fflDealerInfo?.PREMISE_CITY ||
-          !fflDealerInfo?.PREMISE_STATE || !fflDealerInfo?.PREMISE_ZIP_CODE) {
-        throw new Error('Complete FFL dealer information is required');
-      }
-    }
-
-    // Format order items for JSONB storage
-    const formattedOrderItems = await Promise.all(items.map(async (item) => {
-      // Get product details from database
-      const { data: product } = await supabase
-        .from('products')
-        .select('name')
-        .eq('product_id', item.id)
-        .single();
-
-      return {
-        product_id: item.id,
-        name: product?.name || 'Unknown Product',
-        quantity: item.quantity,
-        price: item.price,
-        total: item.price * item.quantity,
-        options: item.options || {}
-      };
-    }));
-
-    // Create initial order record in Supabase
-    const { error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        order_id: orderId,
-        user_id: userId,
-        payment_status: 'pending',
-        total_amount: amount,
-        shipping_address: formattedShippingAddress,
-        billing_address: formattedBillingAddress,
-        order_date: new Date().toISOString(),
-        payment_method: 'credit_card',
-        shipping_method: 'standard',
-        order_status: 'pending',
-        created_at: new Date().toISOString(),
-        order_items: formattedOrderItems,
-        phone_number: phone,
-        email: email,
-        requires_ffl: requiresFFL,
-        ffl_dealer_info: requiresFFL ? fflDealerInfo : null
-      })
-      .select()
-      .single();
+    // Create order record
+    const { error: orderError } = await supabase.from('orders').insert({
+      order_id: orderId,
+      user_id: await getUserIdFromToken(event.headers.authorization, supabase),
+      payment_status: 'pending',
+      total_amount: amount,
+      shipping_address: shippingAddress ? [
+        shippingAddress.address,
+        shippingAddress.city,
+        shippingAddress.state,
+        shippingAddress.zipCode
+      ].filter(Boolean).join(', ') : null,
+      billing_address: formattedBillingAddress,
+      order_date: new Date().toISOString(),
+      payment_method: 'credit_card',
+      shipping_method: 'standard',
+      order_status: 'pending',
+      created_at: new Date().toISOString(),
+      order_items: items,
+      phone_number: phone,
+      email: email,
+      requires_ffl: !!fflDealerInfo,
+      ffl_dealer_info: fflDealerInfo || null
+    });
 
     if (orderError) {
       console.error('Failed to create order:', {
         timestamp: new Date().toISOString(),
         error: orderError,
         orderId,
-        userId
+        userId: event.headers.authorization?.split('Bearer ')[1] || null
       });
       throw new Error(`Failed to create order: ${orderError.message}`);
     }
