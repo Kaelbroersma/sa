@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import * as Icons from 'lucide-react';
@@ -10,13 +10,13 @@ const ShopPage: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMobileDetection();
   const { categories: allCategories, loading, error, fetchCategories } = useProductStore();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [displayCategories, setDisplayCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     const loadCategories = async () => {
       await fetchCategories();
       // Filter out subcategories - only show top-level categories
-      setCategories(allCategories.filter(cat => !cat.parent_category_id));
+      setDisplayCategories(allCategories.filter(cat => !cat.parent_category_id));
     };
     loadCategories();
   }, [allCategories]);
@@ -73,7 +73,7 @@ const ShopPage: React.FC = () => {
         {/* Categories Grid */}
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {categories.map((category, index) => (
+            {displayCategories.map((category, index) => (
               <motion.div
                 key={category.category_id}
                 className="bg-gunmetal rounded-sm shadow-luxury overflow-hidden cursor-pointer group"

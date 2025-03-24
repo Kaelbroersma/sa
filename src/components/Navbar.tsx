@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
+import { productService } from '../services/productService';
 import Logo from './Logo';
 import AuthButton from './Auth/AuthButton';
 import { useMobileDetection } from './MobileDetection';
@@ -41,11 +42,11 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const result = await callNetlifyFunction('getCategories');
+        const result = await productService.getCategories();
         if (result.error) throw new Error(result.error.message);
         
         // Filter out subcategories - only show top-level categories
-        const topLevelCategories = (result.data || []).filter(cat => !cat.parent_category_id);
+        const topLevelCategories = result.data?.filter(cat => !cat.parent_category_id) || [];
         
         // Add icons for top-level categories
         const categoriesWithIcons = topLevelCategories.map(cat => ({
@@ -67,9 +68,9 @@ const Navbar: React.FC = () => {
   // Helper function to get icon name based on category
   const getCategoryIcon = (categoryName: string): string => {
     switch (categoryName) {
-      case 'Carnimore Models':
+      case 'Carnimore Models': 
         return 'Gun';
-      case 'Duracoat':
+      case 'Duracoat Services':
         return 'SprayCan';
       case 'Merch':
         return 'ShoppingBag';
@@ -152,9 +153,7 @@ const Navbar: React.FC = () => {
                           className="flex items-center w-full text-left px-4 py-2 text-white hover:bg-gunmetal hover:text-tan transition-colors"
                         >
                           {category.icon && getIconComponent(category.icon)}
-                          <span className={category.icon ? 'ml-2' : ''}>
-                          {category.name}
-                          </span>
+                          <span className={category.icon ? 'ml-2' : ''}>{category.name}</span>
                         </button>
                       ))
                     )}
