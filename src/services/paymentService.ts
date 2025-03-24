@@ -1,5 +1,5 @@
 import type { Result } from '../types/database';
-import type { PaymentData, PaymentResult } from '../types/payment';
+import type { PaymentData, PaymentResult, FFLDealer } from '../types/payment';
 import { callNetlifyFunction } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
@@ -136,7 +136,7 @@ export const paymentService = {
         });
       }
 
-      // Add delay before returning to allow order creation
+      // Add delay before returning to allow for order creation
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Return success response to allow for polling

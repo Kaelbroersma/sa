@@ -3,21 +3,55 @@ import { useCartStore } from '../store/cartStore';
 
 export type CheckoutStep = 'contact' | 'shipping' | 'ffl' | 'payment';
 
+export interface ContactData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface ShippingAddress {
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
+export interface FFLDealer {
+  lic_regn: string;
+  lic_dist: string;
+  lic_cnty: string;
+  lic_type: string;
+  lic_xprdte: string;
+  lic_seqn: string;
+  license_name: string;
+  business_name: string;
+  premise_street: string;
+  premise_city: string;
+  premise_state: string;
+  premise_zip_code: string;
+  mail_street?: string;
+  mail_city?: string;
+  mail_state?: string;
+  mail_zip_code?: string;
+  voice_phone: string;
+  distance?: number;
+}
+
+export interface PaymentData {
+  cardNumber: string;
+  expiryMonth: string;
+  expiryYear: string;
+  cvv: string;
+  nameOnCard: string;
+  billingAddress: ShippingAddress;
+}
+
 export interface CheckoutData {
-  contact: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-  };
-  shipping?: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
-  ffl?: any; // FFL dealer info
-  payment?: any; // Payment info
+  contact: ContactData;
+  shipping?: ShippingAddress;
+  ffl?: FFLDealer;
+  payment?: PaymentData;
 }
 
 export const useCheckoutFlow = () => {
@@ -180,7 +214,24 @@ export const useCheckoutFlow = () => {
         return isFFLValid;
       
       case 'payment':
-        return true; // Payment validation handled by PaymentForm
+        if (!checkoutData.payment) return false;
+        const { cardNumber, expiryMonth, expiryYear, cvv, nameOnCard, billingAddress } = checkoutData.payment;
+        const isPaymentValid = !!(
+          cardNumber && 
+          expiryMonth && 
+          expiryYear && 
+          cvv && 
+          nameOnCard && 
+          billingAddress?.address &&
+          billingAddress?.city &&
+          billingAddress?.state &&
+          billingAddress?.zipCode
+        );
+        console.log('Payment validation result:', {
+          timestamp: new Date().toISOString(),
+          isValid: isPaymentValid
+        });
+        return isPaymentValid;
       
       default:
         return false;

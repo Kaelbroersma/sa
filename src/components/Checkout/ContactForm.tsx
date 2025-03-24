@@ -1,17 +1,11 @@
 import React from 'react';
 import { Mail, Phone, User } from 'lucide-react';
 import Button from '../Button';
-
-interface ContactFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-}
+import type { ContactData } from '../../hooks/useCheckoutFlow';
 
 interface ContactFormProps {
-  formData: ContactFormData;
-  onChange: (data: Partial<ContactFormData>) => void;
+  formData: ContactData;
+  onChange: (data: ContactData) => void;
   onSubmit: () => void;
   loading?: boolean;
 }
@@ -39,7 +33,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
               type="text"
               required
               value={formData.firstName}
-              onChange={(e) => onChange({ firstName: e.target.value })}
+              onChange={(e) => onChange({ ...formData, firstName: e.target.value })}
               className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
             />
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -55,7 +49,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
               type="text"
               required
               value={formData.lastName}
-              onChange={(e) => onChange({ lastName: e.target.value })}
+              onChange={(e) => onChange({ ...formData, lastName: e.target.value })}
               className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
             />
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -72,7 +66,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
             type="email"
             required
             value={formData.email}
-            onChange={(e) => onChange({ email: e.target.value })}
+            onChange={(e) => onChange({ ...formData, email: e.target.value })}
             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
           />
           <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -88,7 +82,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
             type="tel"
             required
             value={formData.phone}
-            onChange={(e) => onChange({ phone: e.target.value })}
+            onChange={(e) => onChange({ ...formData, phone: e.target.value })}
             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
           />
           <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />

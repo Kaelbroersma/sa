@@ -310,7 +310,6 @@ const ProductDetailsPage: React.FC = () => {
                   )}
                 </div>
               )}
-              
               {/* Add to Cart Button */}
               <div className="mt-8">
                 <Button

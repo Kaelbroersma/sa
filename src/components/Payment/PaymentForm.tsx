@@ -1,23 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CreditCard, Calendar as CalendarIcon, Lock, AlertCircle, MapPin } from 'lucide-react';
+import { useCartStore } from '../../store/cartStore';
+import type { PaymentData, ShippingAddress } from '../../types/payment';
 import Button from '../Button';
-import type { PaymentFormData } from '../../types/payment';
 
 interface PaymentFormProps {
-  onSubmit: (formData: PaymentFormData) => Promise<void>;
-  initialBillingAddress?: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
-  onBillingAddressChange?: (address: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  }) => void;
+  onSubmit: (formData: PaymentData) => Promise<void>;
+  initialBillingAddress?: ShippingAddress;
+  onBillingAddressChange?: (address: ShippingAddress) => void;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({ 
@@ -25,29 +16,20 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   initialBillingAddress,
   onBillingAddressChange
 }) => {
-  const [formData, setFormData] = useState<PaymentFormData>({
+  const { items } = useCartStore();
+  const [formData, setFormData] = useState<PaymentData>({
     cardNumber: '',
     expiryMonth: '',
     expiryYear: '',
     cvv: '',
     nameOnCard: '',
-    billingAddress: initialBillingAddress || {
+    billingAddress: {
       address: '',
       city: '',
       state: '',
       zipCode: ''
     }
   });
-
-  // Update billing address when initialBillingAddress changes
-  useEffect(() => {
-    if (initialBillingAddress) {
-      setFormData(prev => ({
-        ...prev,
-        billingAddress: initialBillingAddress
-      }));
-    }
-  }, [initialBillingAddress]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +80,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
     try {
       // Validate required fields
@@ -153,7 +136,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         }
       });
     } catch (error: any) {
-      setError(error.message || 'Failed to process payment');
+      setError(error.message);
+      setLoading(false);
     }
   };
 
@@ -174,7 +158,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   };
 
-  const updateBillingAddress = (updates: Partial<typeof formData.billingAddress>) => {
+  const updateBillingAddress = (updates: Partial<ShippingAddress>) => {
     const newBillingAddress = {
       ...formData.billingAddress,
       ...updates
@@ -191,6 +175,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   };
 
+  // Calculate order summary
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const tax = subtotal * 0.08;
+  const total = subtotal + tax;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
@@ -200,194 +189,217 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         </div>
       )}
 
-      {/* Name on Card */}
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1">
-          Name on Card <span className="text-tan">*</span>
-        </label>
-        <input
-          type="text"
-          required
-          value={formData.nameOnCard}
-          onChange={(e) => setFormData(prev => ({ ...prev, nameOnCard: e.target.value }))}
-          className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-          autoComplete="cc-name"
-        />
-      </div>
-
-      {/* Card Number */}
-      <div>
-        <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
-          <CreditCard size={16} className="mr-2 text-tan" />
-          Card Number <span className="text-tan">*</span>
-        </label>
-        <input
-          type="text"
-          required
-          maxLength={19}
-          placeholder="1234 5678 9012 3456"
-          value={formData.cardNumber}
-          onChange={(e) => setFormData(prev => ({ 
-            ...prev, 
-            cardNumber: formatCardNumber(e.target.value)
-          }))}
-          className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-          autoComplete="cc-number"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        {/* Expiry Date */}
-        <div>
-          <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
-            <CalendarIcon size={16} className="mr-2 text-tan" />
-            Expiry Date <span className="text-tan">*</span>
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              value={formData.expiryMonth}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                expiryMonth: e.target.value
-              }))}
-              className="bg-dark-gray border border-gunmetal-light rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-              required
-              autoComplete="cc-exp-month"
-            >
-              <option value="">MM</option>
-              {months.map(month => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={formData.expiryYear}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                expiryYear: e.target.value
-              }))}
-              className="bg-dark-gray border border-gunmetal-light rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-              required
-              autoComplete="cc-exp-year"
-            >
-              <option value="">YYYY</option>
-              {years.map(year => (
-                <option key={year.value} value={year.value}>
-                  {year.label}
-                </option>
-              ))}
-            </select>
+      {/* Order Summary */}
+      <div className="bg-dark-gray p-6 rounded-sm mb-6">
+        <h3 className="font-heading text-xl font-bold mb-4">Order Summary</h3>
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div key={item.id} className="flex justify-between">
+              <span>{item.quantity}x {item.name}</span>
+              <span>${(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+          ))}
+          <div className="border-t border-gunmetal-light pt-2 mt-2">
+            <div className="flex justify-between font-bold">
+              <span>Total</span>
+              <span className="text-tan">${total.toFixed(2)}</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* CVV */}
+      <h3 className="font-heading text-xl font-bold mb-6">Payment Information</h3>
+      
+      <div className="space-y-4">
+        {/* Name on Card */}
         <div>
-          <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
-            <Lock size={16} className="mr-2 text-tan" />
-            CVV <span className="text-tan">*</span>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            Name on Card <span className="text-tan">*</span>
           </label>
           <input
             type="text"
             required
-            maxLength={4}
-            placeholder="123"
-            value={formData.cvv}
-            onChange={(e) => setFormData(prev => ({
-              ...prev,
-              cvv: e.target.value.replace(/\D/g, '')
-            }))}
+            value={formData.nameOnCard}
+            onChange={(e) => setFormData(prev => ({ ...prev, nameOnCard: e.target.value }))}
             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-            autoComplete="cc-csc"
+            autoComplete="cc-name"
           />
         </div>
-      </div>
 
-      {/* Billing Address Section */}
-      <div className="border-t border-gunmetal-light pt-6">
-        <h3 className="font-heading text-lg font-bold mb-4">Billing Address</h3>
-        
-        <div className="space-y-4">
+        {/* Card Number */}
+        <div>
+          <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
+            <CreditCard size={16} className="mr-2 text-tan" />
+            Card Number <span className="text-tan">*</span>
+          </label>
+          <input
+            type="text"
+            required
+            maxLength={19}
+            placeholder="1234 5678 9012 3456"
+            value={formData.cardNumber}
+            onChange={(e) => setFormData(prev => ({ 
+              ...prev, 
+              cardNumber: formatCardNumber(e.target.value)
+            }))}
+            className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+            autoComplete="cc-number"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          {/* Expiry Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Street Address <span className="text-tan">*</span>
+            <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
+              <CalendarIcon size={16} className="mr-2 text-tan" />
+              Expiry Date <span className="text-tan">*</span>
             </label>
-            <div className="relative">
-              <input
-                type="text"
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={formData.expiryMonth}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  expiryMonth: e.target.value
+                }))}
+                className="bg-dark-gray border border-gunmetal-light rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
                 required
-                value={formData.billingAddress.address}
-                onChange={(e) => updateBillingAddress({ address: e.target.value })}
-                className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-                autoComplete="billing street-address"
-              />
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                autoComplete="cc-exp-month"
+              >
+                <option value="">MM</option>
+                {months.map(month => (
+                  <option key={month.value} value={month.value}>
+                    {month.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={formData.expiryYear}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  expiryYear: e.target.value
+                }))}
+                className="bg-dark-gray border border-gunmetal-light rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+                required
+                autoComplete="cc-exp-year"
+              >
+                <option value="">YYYY</option>
+                {years.map(year => (
+                  <option key={year.value} value={year.value}>
+                    {year.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                City <span className="text-tan">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.billingAddress.city}
-                onChange={(e) => updateBillingAddress({ city: e.target.value })}
-                className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-                autoComplete="billing address-level2"
-              />
-            </div>
+          {/* CVV */}
+          <div>
+            <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
+              <Lock size={16} className="mr-2 text-tan" />
+              CVV <span className="text-tan">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              maxLength={4}
+              placeholder="123"
+              value={formData.cvv}
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                cvv: e.target.value.replace(/\D/g, '')
+              }))}
+              className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+              autoComplete="cc-csc"
+            />
+          </div>
+        </div>
 
+        {/* Billing Address Section */}
+        <div className="border-t border-gunmetal-light pt-6">
+          <h3 className="font-heading text-lg font-bold mb-4">Billing Address</h3>
+          
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                State <span className="text-tan">*</span>
+                Street Address <span className="text-tan">*</span>
               </label>
-              <input
-                type="text"
-                required
-                maxLength={2}
-                placeholder="AZ"
-                value={formData.billingAddress.state}
-                onChange={(e) => {
-                  const value = e.target.value.toUpperCase();
-                  updateBillingAddress({ state: value });
-                  if (value.length === 2) {
-                    validateState(value);
-                  }
-                }}
-                className={`w-full bg-dark-gray border ${stateError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent uppercase`}
-                autoComplete="billing address-level1"
-              />
-              {stateError && (
-                <p className="text-red-500 text-xs mt-1">{stateError}</p>
-              )}
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={formData.billingAddress.address}
+                  onChange={(e) => updateBillingAddress({ address: e.target.value })}
+                  className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+                  autoComplete="billing street-address"
+                />
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                ZIP <span className="text-tan">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                maxLength={5}
-                pattern="[0-9]{5}"
-                value={formData.billingAddress.zipCode}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 5);
-                  updateBillingAddress({ zipCode: value });
-                  if (value.length === 5) {
-                    validateZipCode(value);
-                  }
-                }}
-                className={`w-full bg-dark-gray border ${zipError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent`}
-                autoComplete="billing postal-code"
-              />
-              {zipError && (
-                <p className="text-red-500 text-xs mt-1">{zipError}</p>
-              )}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  City <span className="text-tan">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.billingAddress.city}
+                  onChange={(e) => updateBillingAddress({ city: e.target.value })}
+                  className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+                  autoComplete="billing address-level2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  State <span className="text-tan">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={2}
+                  placeholder="AZ"
+                  value={formData.billingAddress.state}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase();
+                    updateBillingAddress({ state: value });
+                    if (value.length === 2) {
+                      validateState(value);
+                    }
+                  }}
+                  className={`w-full bg-dark-gray border ${stateError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent uppercase`}
+                  autoComplete="billing address-level1"
+                />
+                {stateError && (
+                  <p className="text-red-500 text-xs mt-1">{stateError}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  ZIP <span className="text-tan">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={5}
+                  pattern="[0-9]{5}"
+                  value={formData.billingAddress.zipCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+                    updateBillingAddress({ zipCode: value });
+                    if (value.length === 5) {
+                      validateZipCode(value);
+                    }
+                  }}
+                  className={`w-full bg-dark-gray border ${zipError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent`}
+                  autoComplete="billing postal-code"
+                />
+                {zipError && (
+                  <p className="text-red-500 text-xs mt-1">{zipError}</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

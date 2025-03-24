@@ -20,6 +20,14 @@ export interface FFLDealer {
   distance?: number;
 }
 
+// Shared address type
+export interface ShippingAddress {
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
 // Payment form data
 export interface PaymentFormData {
   cardNumber: string;
@@ -27,12 +35,7 @@ export interface PaymentFormData {
   expiryYear: string;
   cvv: string;
   nameOnCard: string;
-  billingAddress: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
+  billingAddress: ShippingAddress;
 }
 
 // Full payment data including shipping and FFL info
@@ -47,12 +50,7 @@ export interface PaymentData extends PaymentFormData {
   }>;
   email: string;
   phone: string;
-  shippingAddress?: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
+  shippingAddress?: ShippingAddress;
   fflDealerInfo?: FFLDealer;
 }
 

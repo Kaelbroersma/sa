@@ -1,17 +1,11 @@
 import React, { useState } from 'react';
 import { MapPin } from 'lucide-react';
 import Button from '../Button';
-
-interface ShippingAddress {
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-}
+import type { ShippingAddress } from '../../hooks/useCheckoutFlow';
 
 interface ShippingFormProps {
   formData: ShippingAddress;
-  onChange: (data: Partial<ShippingAddress>) => void;
+  onChange: (data: ShippingAddress) => void;
   onSubmit: () => void;
   loading?: boolean;
 }
@@ -67,12 +61,12 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     }
 
     // Validate state
-    if (!formData.state?.trim() || !validateState(formData.state)) {
+    if (!validateState(formData.state)) {
       isValid = false;
     }
 
     // Validate ZIP code
-    if (!formData.zipCode?.trim() || !validateZipCode(formData.zipCode)) {
+    if (!validateZipCode(formData.zipCode)) {
       isValid = false;
     }
 
