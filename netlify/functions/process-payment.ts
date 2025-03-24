@@ -87,19 +87,25 @@ export const handler: Handler = async (event) => {
     // Validate required fields
     if (!cardNumber?.trim() || !expiryMonth?.trim() || !expiryYear?.trim() || 
         !cvv?.trim() || !amount || !orderId || 
-        !email?.trim() || !phone?.trim()) {
+        !email?.trim() || !phone?.trim() ||
+        !billingAddress?.address?.trim() || !billingAddress?.city?.trim() ||
+        !billingAddress?.state?.trim() || !billingAddress?.zipCode?.trim()) {
       throw new Error('Missing required fields');
     }
 
-    // Validate shipping address only for non-firearm orders or mixed orders
-    if (!requiresFFL || (requiresFFL && shippingAddress)) {
+    // For non-firearm orders, shipping address is required
+    const hasNonFFLItems = items.some((item: any) => 
+      !item.id.startsWith('CM') && !item.id.startsWith('BA')
+    );
+    
+    if (hasNonFFLItems) {
       if (!shippingAddress?.address?.trim() || !shippingAddress?.city?.trim() ||
           !shippingAddress?.state?.trim() || !shippingAddress?.zipCode?.trim()) {
         throw new Error('Shipping address is required for non-firearm items');
       }
     }
 
-    // Validate FFL info for firearm orders
+    // For firearm orders, FFL info is required
     if (requiresFFL) {
       if (!fflDealerInfo?.PREMISE_STREET || !fflDealerInfo?.PREMISE_CITY ||
           !fflDealerInfo?.PREMISE_STATE || !fflDealerInfo?.PREMISE_ZIP_CODE) {
