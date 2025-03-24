@@ -85,13 +85,13 @@ function App() {
                 <Route path="/shop" element={<ShopPage />} />
                 
                 {/* Category listing pages */}
-                <Route path="/shop/carnimore-models" element={<ProductPage />} />
+                <Route path="/shop/carnimore-models" element={<CarnimoreModelsPage />} />
                 <Route path="/shop/duracoat" element={<DuracoatPage />} />
                 <Route path="/shop/merch" element={<MerchPage />} />
 
                 {/* Accessories Subcategories */} 
                 <Route path="/shop/scope-covers" element={<AccessoriesPage />} />
-                <Route path="/shop/sunshades" element={<ProductPage />} />
+                <Route path="/shop/sunshades" element={<AccessoriesPage />} />
                 <Route path="/shop/ard" element={<AccessoriesPage />} />
                 <Route path="/shop/mounts" element={<AccessoriesPage />} />
                 <Route path="/shop/scope-accessories" element={<AccessoriesPage />} />
