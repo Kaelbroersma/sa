@@ -85,71 +85,22 @@ function App() {
                 <Route path="/shop" element={<ShopPage />} />
                 
                 {/* Category listing pages */}
-                <Route path="/shop/carnimore-models" element={<CarnimoreModelsPage />} />
+                <Route path="/shop/carnimore-models" element={<ProductPage />} />
                 <Route path="/shop/duracoat" element={<DuracoatPage />} />
                 <Route path="/shop/merch" element={<MerchPage />} />
+
+                {/* Accessories Subcategories */} 
+                <Route path="/shop/scope-covers" element={<AccessoriesPage />} />
+                <Route path="/shop/sunshades" element={<ProductPage />} />
+                <Route path="/shop/ard" element={<AccessoriesPage />} />
+                <Route path="/shop/mounts" element={<AccessoriesPage />} />
+                <Route path="/shop/scope-accessories" element={<AccessoriesPage />} />
+                
                 <Route path="/shop/optics" element={<OpticsPage />} />
                 <Route path="/shop/accessories" element={<AccessoriesPage />} />
                 <Route path="/shop/nfa" element={<NFAPage />} />
                 <Route path="/shop/barreled-actions" element={<BarreledActionPage />} />
                 
-                                {/* Accessories Subcategories */}
-                                <Route path="/shop/scope-covers" element={<ProductPage
-                  title="Scope Covers"
-                  description="Protective covers for optics"
-                  categorySlug="scope-covers"
-                  products={[]}
-                  loading={false}
-                  error={null}
-                  fetchProducts={() => {}}
-                  clearProducts={() => {}}
-                  onProductClick={() => {}}
-                />} />
-                <Route path="/shop/sunshades" element={<ProductPage
-                  title="Sunshades"
-                  description="Anti-glare accessories for scopes"
-                  categorySlug="sunshades"
-                  products={[]}
-                  loading={false}
-                  error={null}
-                  fetchProducts={() => {}}
-                  clearProducts={() => {}}
-                  onProductClick={() => {}}
-                />} />
-                <Route path="/shop/ard" element={<ProductPage
-                  title="Anti-Reflection Devices"
-                  description="Reduce scope glare and enhance target acquisition"
-                  categorySlug="ard"
-                  products={[]}
-                  loading={false}
-                  error={null}
-                  fetchProducts={() => {}}
-                  clearProducts={() => {}}
-                  onProductClick={() => {}}
-                />} />
-                <Route path="/shop/mounts" element={<ProductPage
-                  title="Scope Mounts"
-                  description="Premium scope mounting solutions"
-                  categorySlug="mounts"
-                  products={[]}
-                  loading={false}
-                  error={null}
-                  fetchProducts={() => {}}
-                  clearProducts={() => {}}
-                  onProductClick={() => {}}
-                />} />
-                <Route path="/shop/scope-accessories" element={<ProductPage
-                  title="Scope Accessories"
-                  description="Additional scope accessories and components"
-                  categorySlug="scope-accessories"
-                  products={[]}
-                  loading={false}
-                  error={null}
-                  fetchProducts={() => {}}
-                  clearProducts={() => {}}
-                  onProductClick={() => {}}
-                />} />
-
                 {/* Unified product details route */}
                 <Route path="/shop/:categorySlug/:productSlug" element={<ProductDetailsPage />} />
                 
