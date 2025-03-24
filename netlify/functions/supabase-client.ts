@@ -332,6 +332,11 @@ export const handler: Handler = async (event) => {
             throw new Error('Missing category slug');
           }
 
+          console.log('Fetching products for category:', {
+            timestamp: new Date().toISOString(),
+            categorySlug: payload.categorySlug
+          });
+
           // First get the category ID for the given slug
           const { data: categories } = await supabase
             .from('categories')
@@ -340,20 +345,11 @@ export const handler: Handler = async (event) => {
             .single();
 
           if (!categories) {
+            console.error('Category not found:', {
+              timestamp: new Date().toISOString(),
+              categorySlug: payload.categorySlug
+            });
             throw new Error('Category not found');
-          }
-
-          // Then get products for that category
-          // First get the category ID
-          const { data: category, error: categoryError } = await supabase
-            .from('categories')
-            .select('category_id')
-            .eq('slug', payload.categorySlug)
-            .single();
-
-          if (categoryError) {
-            console.error('Category error:', categoryError);
-            throw new Error(`Category not found: ${payload.categorySlug}`);
           }
 
           // Then get the products for that category
@@ -376,6 +372,12 @@ export const handler: Handler = async (event) => {
             console.error('Products error:', productsError);
             throw productsError;
           }
+
+          console.log('Products fetched successfully:', {
+            timestamp: new Date().toISOString(),
+            categorySlug: payload.categorySlug,
+            productCount: products?.length || 0
+          });
 
           // Sort images for each product
           const sortedProducts = products.map(product => ({
