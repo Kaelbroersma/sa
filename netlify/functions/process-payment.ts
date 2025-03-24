@@ -44,16 +44,8 @@ export const handler: Handler = async (event) => {
     // Get user ID from auth context if available
     const userId = event.headers.authorization?.split('Bearer ')[1] || null;
 
-    // Check if order requires FFL
-    const requiresFFL = items.some((item: any) => 
-      item.id.startsWith('CM') || // Carnimore Models
-      item.id.startsWith('BA')    // Barreled Actions
-    );
-
-    // Validate FFL dealer info if required
-    if (requiresFFL && !fflDealerInfo) {
-      throw new Error('FFL dealer information required for firearm purchases');
-    }
+    // Determine if order requires FFL based on provided info
+    const requiresFFL = !!fflDealerInfo;
 
     // Format addresses for database
     const formattedShippingAddress = requiresFFL ? 
@@ -93,19 +85,15 @@ export const handler: Handler = async (event) => {
       throw new Error('Missing required fields');
     }
 
-    // For non-firearm orders, shipping address is required
-    const hasNonFFLItems = items.some((item: any) => 
-      !item.id.startsWith('CM') && !item.id.startsWith('BA')
-    );
-    
-    if (hasNonFFLItems) {
+    // Validate shipping address if not using FFL address
+    if (!requiresFFL) {
       if (!shippingAddress?.address?.trim() || !shippingAddress?.city?.trim() ||
           !shippingAddress?.state?.trim() || !shippingAddress?.zipCode?.trim()) {
         throw new Error('Shipping address is required for non-firearm items');
       }
     }
 
-    // For firearm orders, FFL info is required
+    // Validate FFL info if provided
     if (requiresFFL) {
       if (!fflDealerInfo?.PREMISE_STREET || !fflDealerInfo?.PREMISE_CITY ||
           !fflDealerInfo?.PREMISE_STATE || !fflDealerInfo?.PREMISE_ZIP_CODE) {
