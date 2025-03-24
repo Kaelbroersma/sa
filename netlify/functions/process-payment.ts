@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import https from 'https';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 // Environment variables
 const EPN_ACCOUNT = process.env.EPN_ACCOUNT_NUMBER;
@@ -11,35 +11,6 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-
-// Helper function to get user ID from token
-async function getUserIdFromToken(authHeader: string | undefined, supabase: SupabaseClient) {
-  if (!authHeader?.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.split('Bearer ')[1];
-  
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error || !user) {
-      console.error('Auth error:', {
-        timestamp: new Date().toISOString(),
-        error: error?.message
-      });
-      return null;
-    }
-
-    return user.id;
-  } catch (error) {
-    console.error('Token verification failed:', {
-      timestamp: new Date().toISOString(),
-      error
-    });
-    return null;
-  }
-}
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -62,12 +33,13 @@ export const handler: Handler = async (event) => {
       expiryYear, 
       cvv, 
       amount, 
-      billingAddress, // Only validate billing info
+      billingAddress,
       email,
       phone,
       items,
       shippingAddress,
-      fflDealerInfo
+      fflDealerInfo,
+      userId
     } = paymentData;
 
     // Only validate billing info
@@ -91,7 +63,7 @@ export const handler: Handler = async (event) => {
     // Create order record
     const { error: orderError } = await supabase.from('orders').insert({
       order_id: orderId,
-      user_id: await getUserIdFromToken(event.headers.authorization, supabase),
+      user_id: userId || null,
       payment_status: 'pending',
       total_amount: amount,
       shipping_address: shippingAddress ? [
