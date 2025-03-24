@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import ProductPage from './pages/ProductPage';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
