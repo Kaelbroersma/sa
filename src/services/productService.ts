@@ -4,6 +4,14 @@ import type { Product, Result, Category } from '../types/database';
 export const productService = {
   async getProductsByCategory(categorySlug: string): Promise<Result<Product[]>> {
     try {
+      // First get the category ID for the given slug
+      const categoryResult = await callNetlifyFunction('getCategories');
+      if (categoryResult.error) throw new Error(categoryResult.error.message);
+      
+      const category = categoryResult.data?.find(cat => cat.slug === categorySlug);
+      if (!category) throw new Error('Category not found');
+
+      // Get products for this category
       const result = await callNetlifyFunction('getProducts', { categorySlug });
 
       if (result.error) {

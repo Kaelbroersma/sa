@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProductStore } from '../../store/productStore';
+import { productService } from '../../services/productService';
 import ProductPage from '../ProductPage';
 
 const AccessoriesPage: React.FC = () => {

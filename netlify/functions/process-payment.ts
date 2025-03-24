@@ -42,6 +42,8 @@ export const handler: Handler = async (event) => {
       userId
     } = paymentData;
 
+    const userId = event.headers.authorization?.split('Bearer ')[1] || null;
+
     // Only validate billing info
     if (!cardNumber?.trim() || !expiryMonth?.trim() || !expiryYear?.trim() || !cvv?.trim()) {
       throw new Error('Invalid payment information');
@@ -59,6 +61,24 @@ export const handler: Handler = async (event) => {
       billingAddress.state,
       billingAddress.zipCode
     ].filter(Boolean).join(', ');
+
+    const formattedOrderItems = await Promise.all(items.map(async (item) => {
+      // Get product details from database
+      const { data: product } = await supabase
+        .from('products')
+        .select('name')
+        .eq('product_id', item.id)
+        .single();
+
+      return {
+        product_id: item.id,
+        name: product?.name || 'Unknown Product',
+        quantity: item.quantity,
+        price: item.price,
+        total: item.price * item.quantity,
+        options: item.options || {}
+      };
+    }));
 
     // Create order record
     const { error: orderError } = await supabase.from('orders').insert({
@@ -78,7 +98,7 @@ export const handler: Handler = async (event) => {
       shipping_method: 'standard',
       order_status: 'pending',
       created_at: new Date().toISOString(),
-      order_items: items,
+      order_items: formattedOrderItems,
       phone_number: phone,
       email: email,
       requires_ffl: !!fflDealerInfo,

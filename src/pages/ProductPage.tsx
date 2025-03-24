@@ -41,6 +41,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
   const [subcategoryError, setSubcategoryError] = useState<string | null>(null);
   const [isParentCategory, setIsParentCategory] = useState(false);
   const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(null);
+  const [parentCategory, setParentCategory] = useState<Category | null>(null);
 
   useEffect(() => {
     const fetchSubcategories = async () => {
@@ -53,10 +54,16 @@ const ProductPage: React.FC<ProductPageProps> = ({
         const currentCategory = result.data?.find(cat => cat.slug === categorySlug);
         setCurrentCategoryId(currentCategory?.category_id || null);
         
-        const subs = result.data?.filter(cat => cat.parent_category_id === currentCategory?.category_id) || [];
-        
-        setIsParentCategory(subs.length > 0);
-        setSubcategories(subs);
+        // If this is a subcategory, find its parent
+        if (currentCategory?.parent_category_id) {
+          const parent = result.data?.find(cat => cat.category_id === currentCategory.parent_category_id);
+          setParentCategory(parent || null);
+          setIsParentCategory(false);
+        } else {
+          const subs = result.data?.filter(cat => cat.parent_category_id === currentCategory?.category_id) || [];
+          setIsParentCategory(subs.length > 0);
+          setSubcategories(subs);
+        }
       } catch (error: any) {
         setSubcategoryError(error.message);
       } finally {
@@ -105,6 +112,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
               <Breadcrumbs
                 items={[
                   { label: 'Shop', href: '/shop' },
+                  ...(parentCategory ? [{ label: parentCategory.name, href: `/shop/${parentCategory.slug}` }] : []),
                   { label: title }
                 ]}
               />
@@ -186,7 +194,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
           )}
 
           {/* Products Grid */}
-          {!loading && !error && !isParentCategory && (
+          {!loading && !error && (!isParentCategory || parentCategory) && (
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
               {products.map((product, index) => (
                 <motion.div
