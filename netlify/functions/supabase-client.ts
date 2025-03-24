@@ -332,6 +332,18 @@ export const handler: Handler = async (event) => {
             throw new Error('Missing category slug');
           }
 
+          // First get the category ID for the given slug
+          const { data: categories } = await supabase
+            .from('categories')
+            .select('category_id')
+            .eq('slug', payload.categorySlug)
+            .single();
+
+          if (!categories) {
+            throw new Error('Category not found');
+          }
+
+          // Then get products for that category
           // First get the category ID
           const { data: category, error: categoryError } = await supabase
             .from('categories')
@@ -356,7 +368,7 @@ export const handler: Handler = async (event) => {
                 image_order
               )
             `)
-            .eq('category_id', category.category_id)
+            .eq('category_id', categories.category_id)
             .eq('product_status', 'available')
             .order('name');
 

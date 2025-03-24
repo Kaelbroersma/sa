@@ -4,18 +4,11 @@ import type { Product, Result, Category } from '../types/database';
 export const productService = {
   async getProductsByCategory(categorySlug: string): Promise<Result<Product[]>> {
     try {
-      // First get the category ID for the given slug
-      const categoryResult = await callNetlifyFunction('getCategories');
-      if (categoryResult.error) throw new Error(categoryResult.error.message);
-      
-      const category = categoryResult.data?.find(cat => cat.slug === categorySlug);
-      if (!category) throw new Error('Category not found');
-
       // Get products for this category
       const result = await callNetlifyFunction('getProducts', { categorySlug });
 
       if (result.error) {
-        throw new Error(result.error);
+        throw new Error(result.error.message);
       }
 
       // Sort images by order for each product
@@ -25,8 +18,18 @@ export const productService = {
           ?.sort((a, b) => a.image_order - b.image_order)
       }));
 
+      console.log('Products fetched for category:', {
+        timestamp: new Date().toISOString(),
+        categorySlug,
+        productCount: productsWithSortedImages?.length || 0
+      });
       return { data: productsWithSortedImages || [], error: null };
     } catch (error: any) {
+      console.error('Failed to fetch products:', {
+        timestamp: new Date().toISOString(),
+        categorySlug,
+        error: error.message
+      });
       return {
         data: null,
         error: {
