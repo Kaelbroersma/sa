@@ -87,9 +87,24 @@ export const handler: Handler = async (event) => {
     // Validate required fields
     if (!cardNumber?.trim() || !expiryMonth?.trim() || !expiryYear?.trim() || 
         !cvv?.trim() || !amount || !orderId || 
-        !shippingAddress?.address?.trim() || !shippingAddress?.zipCode?.trim() ||
         !email?.trim() || !phone?.trim()) {
       throw new Error('Missing required fields');
+    }
+
+    // Validate shipping address only for non-firearm orders or mixed orders
+    if (!requiresFFL || (requiresFFL && shippingAddress)) {
+      if (!shippingAddress?.address?.trim() || !shippingAddress?.city?.trim() ||
+          !shippingAddress?.state?.trim() || !shippingAddress?.zipCode?.trim()) {
+        throw new Error('Shipping address is required for non-firearm items');
+      }
+    }
+
+    // Validate FFL info for firearm orders
+    if (requiresFFL) {
+      if (!fflDealerInfo?.PREMISE_STREET || !fflDealerInfo?.PREMISE_CITY ||
+          !fflDealerInfo?.PREMISE_STATE || !fflDealerInfo?.PREMISE_ZIP_CODE) {
+        throw new Error('Complete FFL dealer information is required');
+      }
     }
 
     // Format order items for JSONB storage
