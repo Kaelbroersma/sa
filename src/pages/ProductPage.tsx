@@ -208,7 +208,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
                   {/* Product Image */}
                   <div className="relative aspect-w-4 aspect-h-3 overflow-hidden">
                     <img
-                      src={`/.netlify/images?url=${getImageUrl(product.images?.[0]?.image_url || '/img/Logo-Main.webp')}`}
+                      src={`/.netlify/images?url=${getImageUrl(product.images?.[0]?.image_url || '/img/Logo-Main.webp')}&width=400`}
                       alt={product.name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />

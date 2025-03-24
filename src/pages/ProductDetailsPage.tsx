@@ -197,7 +197,7 @@ const ProductDetailsPage: React.FC = () => {
                 >
                   {product.images && product.images.length > 0 ? (
                     <img
-                      src={getImageUrl(product.images[selectedImageIndex].image_url)}
+                    src={`/.netlify/images?url=${getImageUrl(product.images[selectedImageIndex].image_url)}&width=400`}
                       alt={`${product.name} - View ${selectedImageIndex + 1}`}
                       className="w-full h-full object-cover"
                     />
@@ -222,7 +222,7 @@ const ProductDetailsPage: React.FC = () => {
                         }`}
                       >
                         <img
-                          src={getImageUrl(image.image_url)}
+                          src={`/.netlify/images?url=${getImageUrl(image.image_url)}&width=100`}
                           alt={`${product.name} - Thumbnail ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
