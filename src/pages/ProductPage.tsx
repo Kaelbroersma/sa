@@ -40,6 +40,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
   const [loadingSubcategories, setLoadingSubcategories] = useState(false);
   const [subcategoryError, setSubcategoryError] = useState<string | null>(null);
   const [isParentCategory, setIsParentCategory] = useState(false);
+  const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSubcategories = async () => {
@@ -50,6 +51,8 @@ const ProductPage: React.FC<ProductPageProps> = ({
         
         // Find current category to check if it's a parent
         const currentCategory = result.data?.find(cat => cat.slug === categorySlug);
+        setCurrentCategoryId(currentCategory?.category_id || null);
+        
         const subs = result.data?.filter(cat => cat.parent_category_id === currentCategory?.category_id) || [];
         
         setIsParentCategory(subs.length > 0);
@@ -65,11 +68,14 @@ const ProductPage: React.FC<ProductPageProps> = ({
   }, [categorySlug]);
 
   useEffect(() => {
-    if (!isParentCategory) {
+    // Fetch products if:
+    // 1. We have a category ID AND
+    // 2. Either it's not a parent category OR it's a subcategory
+    if (currentCategoryId && (!isParentCategory || currentCategoryId)) {
       clearProducts();
       fetchProducts(categorySlug);
     }
-  }, [categorySlug]);
+  }, [categorySlug, currentCategoryId, isParentCategory]);
 
   return (
     <div>
