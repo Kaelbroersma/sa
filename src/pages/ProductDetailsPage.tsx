@@ -38,11 +38,7 @@ const ProductDetailsPage: React.FC = () => {
 
   useEffect(() => {
     if (!categorySlug || !productSlug) return;
-
-    // Clear any existing selections
     clearSelections();
-
-    // Fetch product
     fetchProduct(productSlug);
   }, [categorySlug, productSlug]);
 
@@ -102,7 +98,6 @@ const ProductDetailsPage: React.FC = () => {
           break;
 
         default:
-          // Simple products (optics, accessories, nfa)
           await addItem({
             ...baseItem,
             price: product.price
@@ -116,7 +111,6 @@ const ProductDetailsPage: React.FC = () => {
     }
   };
 
-  // Parse specifications from JSON if they exist
   const specifications = product?.specifications ? 
     (Array.isArray(product.specifications) ? 
       product.specifications : 
@@ -139,182 +133,197 @@ const ProductDetailsPage: React.FC = () => {
   };
 
   return (
-    <div className="pt-24 pb-16">
-      <div className="container mx-auto px-4">
-        {/* Back Button and Breadcrumbs */}
-        <button
-          onClick={handleBack}
-          className="flex items-center text-gray-400 hover:text-tan transition-colors mb-8"
-        >
-          <ArrowLeft size={20} className="mr-2" />
-          Back
-        </button>
+    <div>
+      {/* Hero Image */}
+      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
+        {product?.images && product.images.length > 0 && (
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ 
+              backgroundImage: `url(${getImageUrl(product.images[0].image_url)})`,
+              filter: 'brightness(0.4)'
+            }}
+          />
+        )}
+      </section>
 
-        <Breadcrumbs
-          items={[
-            { label: 'Shop', href: '/shop' },
-            { 
-              label: categorySlug === 'carnimore-models' 
-                ? 'Carnimore Models'
-                : categorySlug === 'duracoat'
-                ? 'Duracoat Services'
-                : categorySlug === 'optics'
-                ? 'Optics'
-                : categorySlug === 'accessories'
-                ? 'Accessories'
-                : categorySlug === 'nfa'
-                ? 'NFA Items'
-                : categorySlug === 'barreled-actions'
-                ? 'Barreled Actions'
-                : 'Merchandise',
-              href: `/shop/${categorySlug}`
-            },
-            { label: product.name }
-          ]}
-        />
+      <div className="pt-12 pb-16">
+        <div className="container mx-auto px-4">
+          {/* Back Button and Breadcrumbs */}
+          <button
+            onClick={handleBack}
+            className="flex items-center text-gray-400 hover:text-tan transition-colors mb-8"
+          >
+            <ArrowLeft size={20} className="mr-2" />
+            Back
+          </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Product Images */}
-          <div className={`${!isMobile && 'lg:sticky lg:top-24'}`}>
+          <Breadcrumbs
+            items={[
+              { label: 'Shop', href: '/shop' },
+              { 
+                label: categorySlug === 'carnimore-models' 
+                  ? 'Carnimore Models'
+                  : categorySlug === 'duracoat'
+                  ? 'Duracoat Services'
+                  : categorySlug === 'optics'
+                  ? 'Optics'
+                  : categorySlug === 'accessories'
+                  ? 'Accessories'
+                  : categorySlug === 'nfa'
+                  ? 'NFA Items'
+                  : categorySlug === 'barreled-actions'
+                  ? 'Barreled Actions'
+                  : 'Merchandise',
+                href: `/shop/${categorySlug}`
+              },
+              { label: product.name }
+            ]}
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Product Images */}
+            <div className={`${!isMobile && 'lg:sticky lg:top-24'}`}>
+              <motion.div
+                className="space-y-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+              >
+                {/* Main Image */}
+                <div 
+                  className="relative aspect-w-4 aspect-h-3 bg-gunmetal rounded-sm overflow-hidden cursor-pointer"
+                  onClick={() => setShowLightbox(true)}
+                >
+                  {product.images && product.images.length > 0 ? (
+                    <img
+                      src={getImageUrl(product.images[selectedImageIndex].image_url)}
+                      alt={`${product.name} - View ${selectedImageIndex + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-dark-gray flex items-center justify-center">
+                      <span className="text-gray-400">No image available</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Thumbnail Grid */}
+                {product.images && product.images.length > 1 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {product.images.map((image, index) => (
+                      <button
+                        key={image.image_id}
+                        onClick={() => setSelectedImageIndex(index)}
+                        className={`aspect-w-1 aspect-h-1 rounded-sm overflow-hidden ${
+                          index === selectedImageIndex 
+                            ? 'ring-2 ring-tan' 
+                            : 'ring-1 ring-gunmetal hover:ring-tan/50'
+                        }`}
+                      >
+                        <img
+                          src={getImageUrl(image.image_url)}
+                          alt={`${product.name} - Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            </div>
+
+            {/* Product Details */}
             <motion.div
-              className="space-y-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              {/* Main Image */}
-              <div 
-                className="relative aspect-w-4 aspect-h-3 bg-gunmetal rounded-sm overflow-hidden cursor-pointer"
-                onClick={() => setShowLightbox(true)}
-              >
-                {product.images && product.images.length > 0 ? (
-                  <img
-                    src={getImageUrl(product.images[selectedImageIndex].image_url)}
-                    alt={`${product.name} - View ${selectedImageIndex + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-dark-gray flex items-center justify-center">
-                    <span className="text-gray-400">No image available</span>
-                  </div>
+              <h1 className="font-heading text-3xl md:text-4xl font-bold mb-4">
+                {product.name}
+              </h1>
+              <p className="text-gray-400 mb-6">{product.description}</p>
+
+              <div className="flex justify-between items-center mb-8">
+                <span className="text-tan text-3xl font-bold">
+                  ${product.price.toLocaleString()}
+                </span>
+                {product.weight && (
+                  <span className="text-gray-400">
+                    Weight: {product.weight}
+                  </span>
                 )}
               </div>
 
-              {/* Thumbnail Grid */}
-              {product.images && product.images.length > 1 && (
-                <div className="grid grid-cols-4 gap-2">
-                  {product.images.map((image, index) => (
-                    <button
-                      key={image.image_id}
-                      onClick={() => setSelectedImageIndex(index)}
-                      className={`aspect-w-1 aspect-h-1 rounded-sm overflow-hidden ${
-                        index === selectedImageIndex 
-                          ? 'ring-2 ring-tan' 
-                          : 'ring-1 ring-gunmetal hover:ring-tan/50'
-                      }`}
+              {/* Specifications Section */}
+              {specifications && specifications.length > 0 && (
+                <div className="mb-8">
+                  <button
+                    onClick={() => setShowSpecs(!showSpecs)}
+                    className="w-full flex items-center justify-between p-4 bg-gunmetal hover:bg-gunmetal-light transition-colors rounded-sm"
+                  >
+                    <span className="font-heading text-lg">Specifications</span>
+                    {showSpecs ? (
+                      <ChevronUp className="text-tan" size={20} />
+                    ) : (
+                      <ChevronDown className="text-tan" size={20} />
+                    )}
+                  </button>
+                  
+                  {showSpecs && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="bg-gunmetal-dark p-4 mt-2 rounded-sm"
                     >
-                      <img
-                        src={getImageUrl(image.image_url)}
-                        alt={`${product.name} - Thumbnail ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
+                      <ul className="space-y-2">
+                        {specifications.map((spec: string, index: number) => (
+                          <li key={index} className="flex items-start">
+                            <span className="text-tan mr-2">•</span>
+                            <span className="text-gray-300">{spec}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
                 </div>
               )}
+
+              {/* Product Options */}
+              <OptionSelector
+                categorySlug={categorySlug}
+                product={product}
+                selectedCaliber={selectedCaliber}
+                carnimoreOptions={selectedOptions}
+                carnimoreColors={colors}
+                duracoatColors={colors}
+                isDirty={selectedOptions.isDirty}
+                selectedSize={selectedOptions.size}
+                selectedColor={selectedOptions.color}
+                onCaliberSelect={setSelectedCaliber}
+                onOptionChange={setSelectedOption}
+                onCarnimoreColorsChange={setColors}
+                onDuracoatColorsChange={setColors}
+                onDirtyChange={(isDirty) => setSelectedOption('isDirty', isDirty)}
+                onSizeSelect={(size) => setSelectedOption('size', size)}
+                onColorSelect={(color) => setSelectedOption('color', color)}
+              />
+
+              {/* Add to Cart Button */}
+              <div className="mt-8">
+                <Button
+                  variant="primary"
+                  fullWidth
+                  disabled={isDisabled}
+                  onClick={handleAddToCart}
+                >
+                  {getButtonText()}
+                </Button>
+              </div>
             </motion.div>
           </div>
-
-          {/* Product Details */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h1 className="font-heading text-3xl md:text-4xl font-bold mb-4">
-              {product.name}
-            </h1>
-            <p className="text-gray-400 mb-6">{product.description}</p>
-
-            <div className="flex justify-between items-center mb-8">
-              <span className="text-tan text-3xl font-bold">
-                ${product.price.toLocaleString()}
-              </span>
-              {product.weight && (
-                <span className="text-gray-400">
-                  Weight: {product.weight}
-                </span>
-              )}
-            </div>
-
-            {/* Specifications Section */}
-            {specifications && specifications.length > 0 && (
-              <div className="mb-8">
-                <button
-                  onClick={() => setShowSpecs(!showSpecs)}
-                  className="w-full flex items-center justify-between p-4 bg-gunmetal hover:bg-gunmetal-light transition-colors rounded-sm"
-                >
-                  <span className="font-heading text-lg">Specifications</span>
-                  {showSpecs ? (
-                    <ChevronUp className="text-tan" size={20} />
-                  ) : (
-                    <ChevronDown className="text-tan" size={20} />
-                  )}
-                </button>
-                
-                {showSpecs && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="bg-gunmetal-dark p-4 mt-2 rounded-sm"
-                  >
-                    <ul className="space-y-2">
-                      {specifications.map((spec: string, index: number) => (
-                        <li key={index} className="flex items-start">
-                          <span className="text-tan mr-2">•</span>
-                          <span className="text-gray-300">{spec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                )}
-              </div>
-            )}
-
-            {/* Product Options */}
-            <OptionSelector
-              categorySlug={categorySlug}
-              product={product}
-              selectedCaliber={selectedCaliber}
-              carnimoreOptions={selectedOptions}
-              carnimoreColors={colors}
-              duracoatColors={colors}
-              isDirty={selectedOptions.isDirty}
-              selectedSize={selectedOptions.size}
-              selectedColor={selectedOptions.color}
-              onCaliberSelect={setSelectedCaliber}
-              onOptionChange={setSelectedOption}
-              onCarnimoreColorsChange={setColors}
-              onDuracoatColorsChange={setColors}
-              onDirtyChange={(isDirty) => setSelectedOption('isDirty', isDirty)}
-              onSizeSelect={(size) => setSelectedOption('size', size)}
-              onColorSelect={(color) => setSelectedOption('color', color)}
-            />
-
-            {/* Add to Cart Button */}
-            <div className="mt-8">
-              <Button
-                variant="primary"
-                fullWidth
-                disabled={isDisabled}
-                onClick={handleAddToCart}
-              >
-                {getButtonText()}
-              </Button>
-            </div>
-          </motion.div>
         </div>
       </div>
 

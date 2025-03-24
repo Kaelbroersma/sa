@@ -36,7 +36,6 @@ const ProductPage: React.FC<ProductPageProps> = ({
   const isMobile = useMobileDetection();
 
   useEffect(() => {
-    // Clear existing products and fetch new ones
     clearProducts();
     fetchProducts(categorySlug);
   }, [categorySlug]);
@@ -44,7 +43,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative h-[60vh] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
         {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center"
@@ -53,46 +52,45 @@ const ProductPage: React.FC<ProductPageProps> = ({
             filter: 'brightness(0.4)'
           }}
         />
-        
-        {/* Content */}
-        <div className="container mx-auto px-4 relative z-10">
-          {/* Breadcrumbs */}
-          <motion.div
-            className="mb-8"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <Breadcrumbs
-              items={[
-                { label: 'Shop', href: '/shop' },
-                { label: title }
-              ]}
-            />
-          </motion.div>
-
-          <motion.h1 
-            className="font-heading text-4xl md:text-6xl font-bold mb-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            {title}
-          </motion.h1>
-          <motion.p
-            className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            {description}
-          </motion.p>
-        </div>
       </section>
 
-      {/* Product Grid */}
-      <div className="py-20">
+      {/* Content Section */}
+      <div className="py-12">
         <div className="container mx-auto px-4">
+          {/* Breadcrumbs and Header */}
+          <div className="mb-12">
+            <motion.div
+              className="mb-4"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <Breadcrumbs
+                items={[
+                  { label: 'Shop', href: '/shop' },
+                  { label: title }
+                ]}
+              />
+            </motion.div>
+
+            <motion.h1 
+              className="font-heading text-4xl md:text-5xl font-bold mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              {title}
+            </motion.h1>
+            <motion.p
+              className="text-xl md:text-2xl text-gray-300 max-w-3xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              {description}
+            </motion.p>
+          </div>
+
           {/* Loading State */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-12">
