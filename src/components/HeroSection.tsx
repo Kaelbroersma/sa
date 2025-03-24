@@ -66,6 +66,7 @@ const HeroSection: React.FC = () => {
       />
 
       {/* Hero Image Cutout Container w/o parallax */}
+      {/* COMMENTED OUT CURRENTLY- OVERLAY FOR COOL SCROLL
       <div 
         className="absolute inset-x-0 bottom-0 z-10"
         style={{ 
@@ -82,6 +83,7 @@ const HeroSection: React.FC = () => {
           }}
         />
       </div>
+      */}
       
       {/* Overlay gradient for better text readability */}
       <motion.div 
