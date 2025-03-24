@@ -43,7 +43,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[30vh] flex items-center justify-center overflow-hidden">
         {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center"

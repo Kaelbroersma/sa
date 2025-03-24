@@ -135,7 +135,7 @@ const ProductDetailsPage: React.FC = () => {
   return (
     <div>
       {/* Hero Image */}
-      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[30vh] flex items-center justify-center overflow-hidden">
         {product?.images && product.images.length > 0 && (
           <div 
             className="absolute inset-0 bg-cover bg-center"
@@ -255,6 +255,26 @@ const ProductDetailsPage: React.FC = () => {
                 )}
               </div>
 
+              {/* Product Options */}
+              <OptionSelector
+                categorySlug={categorySlug}
+                product={product}
+                selectedCaliber={selectedCaliber}
+                carnimoreOptions={selectedOptions}
+                carnimoreColors={colors}
+                duracoatColors={colors}
+                isDirty={selectedOptions.isDirty}
+                selectedSize={selectedOptions.size}
+                selectedColor={selectedOptions.color}
+                onCaliberSelect={setSelectedCaliber}
+                onOptionChange={setSelectedOption}
+                onCarnimoreColorsChange={setColors}
+                onDuracoatColorsChange={setColors}
+                onDirtyChange={(isDirty) => setSelectedOption('isDirty', isDirty)}
+                onSizeSelect={(size) => setSelectedOption('size', size)}
+                onColorSelect={(color) => setSelectedOption('color', color)}
+              />
+
               {/* Specifications Section */}
               {specifications && specifications.length > 0 && (
                 <div className="mb-8">
@@ -290,27 +310,7 @@ const ProductDetailsPage: React.FC = () => {
                   )}
                 </div>
               )}
-
-              {/* Product Options */}
-              <OptionSelector
-                categorySlug={categorySlug}
-                product={product}
-                selectedCaliber={selectedCaliber}
-                carnimoreOptions={selectedOptions}
-                carnimoreColors={colors}
-                duracoatColors={colors}
-                isDirty={selectedOptions.isDirty}
-                selectedSize={selectedOptions.size}
-                selectedColor={selectedOptions.color}
-                onCaliberSelect={setSelectedCaliber}
-                onOptionChange={setSelectedOption}
-                onCarnimoreColorsChange={setColors}
-                onDuracoatColorsChange={setColors}
-                onDirtyChange={(isDirty) => setSelectedOption('isDirty', isDirty)}
-                onSizeSelect={(size) => setSelectedOption('size', size)}
-                onColorSelect={(color) => setSelectedOption('color', color)}
-              />
-
+              
               {/* Add to Cart Button */}
               <div className="mt-8">
                 <Button
