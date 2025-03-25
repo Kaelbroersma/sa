@@ -42,8 +42,6 @@ export const handler: Handler = async (event) => {
       userId
     } = paymentData;
 
-    const userId = event.headers.authorization?.split('Bearer ')[1] || null;
-
     // Only validate billing info
     if (!cardNumber?.trim() || !expiryMonth?.trim() || !expiryYear?.trim() || !cvv?.trim()) {
       throw new Error('Invalid payment information');

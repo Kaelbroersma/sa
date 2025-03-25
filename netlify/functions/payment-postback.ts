@@ -172,7 +172,6 @@ export const handler: Handler = async (event) => {
         payment_processor_response: {
           success,
           respText,
-          fullResponse,
           authCode,
           avsResponse: avsResp,
           cvv2Response: cvv2Resp,

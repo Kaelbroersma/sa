@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Button from '../components/Button';
-import SchedulingModal from '../components/CourseScheduling/SchedulingModal';
+import CalendlyModal from '../components/CourseScheduling/CalendlyModal';
 
 const TrainingPage: React.FC = () => {
   const [isSchedulingOpen, setIsSchedulingOpen] = useState(false);
@@ -165,7 +165,7 @@ const TrainingPage: React.FC = () => {
         </motion.div>
 
         {/* Scheduling Modal */}
-        <SchedulingModal
+        <CalendlyModal
           isOpen={isSchedulingOpen}
           onClose={() => setIsSchedulingOpen(false)}
           courseId={selectedCourseId || ''}
