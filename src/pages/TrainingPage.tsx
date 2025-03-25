@@ -39,7 +39,7 @@ const TrainingPage: React.FC = () => {
       description: "Master the art of shooting from various positions and using natural supports. Learn how to set up stable shooting positions in different hunting environments and terrain.",
       duration: "2 Hours",
       level: "Intermediate",
-      price: 449
+      price: 299
     }
   ];
 
