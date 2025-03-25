@@ -40,9 +40,8 @@ export const handler: Handler = async (event) => {
     }
 
     const fullUrl = url.startsWith('/')
-      ? `${process.env.URL || 'http://localhost:8888'}${url}`
+      ? `https://carnimore.netlify.app${url}`
       : url;
-
     const response = await fetch(fullUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
