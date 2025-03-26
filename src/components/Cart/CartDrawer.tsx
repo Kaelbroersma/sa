@@ -11,8 +11,10 @@ const CartDrawer: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  // Get total from cart store to ensure it matches database
+  // Get subtotal and total from cart store
+  const subtotal = useCartStore(state => state.getCartSubtotal());
   const total = useCartStore(state => state.getCartTotal());
+  const processingFee = subtotal * 0.03;
 
   const handleCheckout = () => {
     setCartOpen(false);
@@ -82,7 +84,7 @@ const CartDrawer: React.FC = () => {
             {/* Cart Items */}
             <div className="flex-1 overflow-y-auto h-[calc(100vh-180px)]">
               {items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                <div className="flex flex-col items-center justify-center h-full text-center p-4 bg-primary">
                   <ShoppingCart className="text-gray-500 mb-4" size={48} />
                   <p className="text-gray-400">Your cart is empty</p>
                 </div>
@@ -135,7 +137,13 @@ const CartDrawer: React.FC = () => {
                         </div>
                       </div>
                       <button
-                        onClick={async () => await removeItem(item.id)}
+                        onClick={() => {
+                          // Create composite key with ID and stringified options
+                          const itemKey = item.options ? 
+                            `${item.id}::${JSON.stringify(item.options)}` : 
+                            item.id;
+                          removeItem(itemKey);
+                        }}
                         className="text-gray-400 hover:text-red-500 transition-colors"
                       >
                         <Trash2 size={20} />
@@ -149,9 +157,9 @@ const CartDrawer: React.FC = () => {
             {/* Footer */}
             <div className="border-t border-gunmetal p-4 bg-primary">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-gray-400">Total</span>
-                <span className="text-xl font-bold text-tan">
-                  ${total.toFixed(2)}
+                <span className="text-gray-400">Subtotal</span>
+                <span className="text-xl font-bold text-white">
+                  ${subtotal.toFixed(2)}
                 </span>
               </div>
               <Button

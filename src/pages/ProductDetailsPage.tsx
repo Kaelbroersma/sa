@@ -35,6 +35,91 @@ const ProductDetailsPage: React.FC = () => {
   const [showLightbox, setShowLightbox] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [showSpecs, setShowSpecs] = useState(false);
+  const [parentCategory, setParentCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchParentCategory = async () => {
+      if (!categorySlug) return;
+      
+      try {
+        const result = await productService.getCategories();
+        if (result.error) throw result.error;
+        
+        const categories = result.data || [];
+        const currentCategory = categories.find(cat => cat.slug === categorySlug);
+        
+        if (currentCategory?.parent_category_id) {
+          const parent = categories.find(cat => cat.category_id === currentCategory.parent_category_id);
+          if (parent) {
+            setParentCategory(parent.name);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch parent category:', error);
+      }
+    };
+
+    fetchParentCategory();
+  }, [categorySlug]);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+
+  const calculateDuracoatTotal = () => {
+    if (!product) return 0;
+    
+    const basePrice = product.price;
+    const additionalColorCost = product.options?.additionalColorCost || 30;
+    const basePrepCharge = product.options?.basePrepCharge || 50;
+    const additionalPrepCharge = product.options?.additionalPrepCharge || 50;
+    
+    let total = basePrice;
+    
+    // Add cost for additional colors
+    if (colors > 1) {
+      total += (colors - 1) * additionalColorCost;
+    }
+    
+    // Add prep charges
+    total += basePrepCharge;
+    if (selectedOptions.isDirty) {
+      total += additionalPrepCharge;
+    }
+    
+    return total;
+  };
+
+  const calculateAccessoryTotal = () => {
+    if (!product || !product.options) return product?.price || 0;
+    
+    let total = product.price;
+    
+    // Add size-based price adjustment
+    if (selectedSize && product.options.sizes) {
+      const sizeOption = product.options.sizes.find(s => s.size === selectedSize);
+      if (sizeOption?.price) {
+        total = sizeOption.price;
+      }
+    }
+
+    // Add type-based price adjustment
+    if (selectedType && product.options.types) {
+      const typeOption = product.options.types.find(t => t.name === selectedType);
+      if (typeOption?.price) {
+        total = typeOption.price;
+      }
+    }
+
+    // Add color-based price adjustment
+    if (selectedColor && product.options.colors) {
+      const colorOption = product.options.colors.find(c => c.name === selectedColor);
+      if (colorOption?.price_adjustment) {
+        total += colorOption.price_adjustment;
+      }
+    }
+
+    return total;
+  };
 
   useEffect(() => {
     if (!categorySlug || !productSlug) return;
@@ -59,13 +144,16 @@ const ProductDetailsPage: React.FC = () => {
         image: product.images?.[0]?.image_url || '/img/Logo-Main.webp'
       };
 
+      let finalPrice = product.price;
+
       switch (categorySlug) {
         case 'carnimore-models':
         case 'barreled-actions':
           if (!selectedCaliber) return;
+          finalPrice = calculateTotalPrice();
           await addItem({
             ...baseItem,
-            price: calculateTotalPrice(),
+            price: finalPrice,
             options: {
               caliber: selectedCaliber,
               colors,
@@ -75,32 +163,61 @@ const ProductDetailsPage: React.FC = () => {
           break;
 
         case 'duracoat':
+          finalPrice = calculateDuracoatTotal();
           await addItem({
             ...baseItem,
-            price: calculateTotalPrice(),
+            price: finalPrice,
             options: {
               colors,
-              isDirty: selectedOptions.isDirty
+              isDirty: selectedOptions.isDirty,
+              additionalColorCost: product.options?.additionalColorCost || 30,
+              basePrepCharge: product.options?.basePrepCharge || 50,
+              additionalPrepCharge: product.options?.additionalPrepCharge || 50
             }
           });
           break;
 
         case 'merch':
           if (!selectedOptions.size || !selectedOptions.color) return;
+          finalPrice = product.price;
+          const merchOptions = {
+            size: selectedOptions.size,
+            color: selectedOptions.color
+          };
+          console.log('Adding merch item with options:', {
+            timestamp: new Date().toISOString(),
+            options: merchOptions
+          });
           await addItem({
             ...baseItem,
-            price: product.price,
+            price: finalPrice,
+            options: merchOptions
+          });
+          break;
+
+        case 'optics':
+        case 'accessories':
+        case 'mounts':
+        case 'scope-covers':
+        case 'sunshades':
+        case 'ard':
+          finalPrice = calculateAccessoryTotal();
+          await addItem({
+            ...baseItem,
+            price: finalPrice,
             options: {
-              size: selectedOptions.size,
-              color: selectedOptions.color
+              size: selectedSize,
+              type: selectedType,
+              color: selectedColor
             }
           });
           break;
 
         default:
+          finalPrice = product.price;
           await addItem({
             ...baseItem,
-            price: product.price
+            price: finalPrice
           });
           break;
       }
@@ -122,14 +239,25 @@ const ProductDetailsPage: React.FC = () => {
   const needsCaliberSelection = ['carnimore-models', 'barreled-actions'].includes(categorySlug || '');
   const needsSizeColorSelection = categorySlug === 'merch';
   const isDisabled = isAddingToCart || 
-    (needsCaliberSelection && !selectedCaliber) ||
-    (needsSizeColorSelection && (!selectedOptions.size || !selectedOptions.color));
+    (needsCaliberSelection && !selectedCaliber) || 
+    (needsSizeColorSelection && (!selectedOptions.size || !selectedOptions.color)) || 
+    (!needsSizeColorSelection && product.options?.sizes && !selectedSize) ||
+    (!needsSizeColorSelection && product.options?.types && !selectedType);
 
   const getButtonText = () => {
     if (isAddingToCart) return 'Adding to Cart...';
     if (needsCaliberSelection && !selectedCaliber) return 'Select Caliber to Continue';
-    if (needsSizeColorSelection && (!selectedOptions.size || !selectedOptions.color)) return 'Select Size and Color to Continue';
-    return 'Add to Cart';
+    if (needsSizeColorSelection && (!selectedOptions.size || !selectedOptions.color)) {
+      return 'Select Size and Color to Continue';
+    }
+    
+    const price = categorySlug === 'duracoat' ? 
+      calculateDuracoatTotal() : 
+      needsCaliberSelection ? calculateTotalPrice() : calculateAccessoryTotal();
+    
+    return product.stock_quantity === 0 
+      ? `Pre-order - $${price.toLocaleString()}`
+      : `Add to Cart - $${price.toLocaleString()}`;
   };
 
   return (
@@ -161,22 +289,15 @@ const ProductDetailsPage: React.FC = () => {
           <Breadcrumbs
             items={[
               { label: 'Shop', href: '/shop' },
-              { 
-                label: categorySlug === 'carnimore-models' 
-                  ? 'Carnimore Models'
-                  : categorySlug === 'duracoat'
-                  ? 'Duracoat Services'
-                  : categorySlug === 'optics'
-                  ? 'Optics'
-                  : categorySlug === 'accessories'
-                  ? 'Accessories'
-                  : categorySlug === 'nfa'
-                  ? 'NFA Items'
-                  : categorySlug === 'barreled-actions'
-                  ? 'Barreled Actions'
-                  : 'Merchandise',
-                href: `/shop/${categorySlug}`
-              },
+              ...(parentCategory ? [
+                { label: 'Accessories', href: '/shop/accessories' },
+                { label: getCategoryLabel(categorySlug), href: `/shop/${categorySlug}` }
+              ] : [
+                { 
+                  label: getCategoryLabel(categorySlug),
+                  href: `/shop/${categorySlug}`
+                }
+              ]),
               { label: product.name }
             ]}
           />
@@ -262,17 +383,23 @@ const ProductDetailsPage: React.FC = () => {
                 selectedCaliber={selectedCaliber}
                 carnimoreOptions={selectedOptions}
                 carnimoreColors={colors}
+                selectedSize={selectedSize}
+                selectedType={selectedType}
+                selectedColor={selectedColor}
                 duracoatColors={colors}
                 isDirty={selectedOptions.isDirty}
-                selectedSize={selectedOptions.size}
-                selectedColor={selectedOptions.color}
                 onCaliberSelect={setSelectedCaliber}
                 onOptionChange={setSelectedOption}
                 onCarnimoreColorsChange={setColors}
                 onDuracoatColorsChange={setColors}
                 onDirtyChange={(isDirty) => setSelectedOption('isDirty', isDirty)}
-                onSizeSelect={(size) => setSelectedOption('size', size)}
-                onColorSelect={(color) => setSelectedOption('color', color)}
+                selectedMerchSize={selectedOptions.size}
+                selectedMerchColor={selectedOptions.color}
+                onMerchSizeSelect={(size) => setSelectedOption('size', size)}
+                onMerchColorSelect={(color) => setSelectedOption('color', color)}
+                onSizeSelect={setSelectedSize}
+                onTypeSelect={setSelectedType}
+                onColorSelect={setSelectedColor}
               />
 
               {/* Specifications Section */}
@@ -313,13 +440,18 @@ const ProductDetailsPage: React.FC = () => {
               {/* Add to Cart Button */}
               <div className="mt-8">
                 <Button
-                  variant="primary"
+                  variant={product.stock_quantity === 0 ? "secondary" : "primary"}
                   fullWidth
                   disabled={isDisabled}
                   onClick={handleAddToCart}
                 >
                   {getButtonText()}
                 </Button>
+                {product.stock_quantity === 0 && (
+                  <p className="text-gray-400 text-sm text-center mt-2">
+                    This item is currently out of stock. Pre-order now to reserve yours.
+                  </p>
+                )}
               </div>
             </motion.div>
           </div>
@@ -368,6 +500,36 @@ const ProductDetailsPage: React.FC = () => {
       )}
     </div>
   );
+};
+
+// Helper function to get category label
+const getCategoryLabel = (slug: string | undefined): string => {
+  switch (slug) {
+    case 'carnimore-models':
+      return 'Carnimore Models';
+    case 'duracoat':
+      return 'Duracoat Services';
+    case 'optics':
+      return 'Optics';
+    case 'accessories':
+      return 'Accessories';
+    case 'nfa':
+      return 'NFA Items';
+    case 'barreled-actions':
+      return 'Barreled Actions';
+    case 'scope-covers':
+      return 'Scope Covers';
+    case 'sunshades':
+      return 'Sunshades';
+    case 'ard':
+      return 'Anti-Reflection Devices';
+    case 'mounts':
+      return 'Scope Mounts';
+    case 'scope-accessories':
+      return 'Scope Accessories';
+    default:
+      return 'Merchandise';
+  }
 };
 
 export default ProductDetailsPage;

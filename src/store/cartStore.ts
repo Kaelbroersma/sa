@@ -89,23 +89,35 @@ export const useCartStore = create<CartStore>()(
       addItem: async (item) => {
         const user = useAuthStore.getState().user;
 
-        // Update local state and sync with database
-        set((state) => {
-          const existingItem = state.items.find((i) => i.id === item.id);
-          let newItems;
+        // Check if an identical item (including options) exists
+        const existingItemIndex = get().items.findIndex((i) => {
+          // Check if base product matches
+          if (i.id !== item.id) return false;
           
-          if (existingItem) {
-            newItems = state.items.map((i) =>
-              i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
-            );
-          } else {
-            newItems = [...state.items, item];
-          }
+          // For items without options, just match the ID
+          if (!i.options && !item.options) return true;
+          if (!i.options || !item.options) return false;
+          
+          // Deep compare options
+          return JSON.stringify(i.options) === JSON.stringify(item.options);
+        });
 
-          return { 
-            items: newItems,
-            isOpen: true
-          };
+        set((state) => {
+          if (existingItemIndex !== -1) {
+            // Update quantity of existing item with identical options
+            const newItems = [...state.items];
+            newItems[existingItemIndex] = {
+              ...newItems[existingItemIndex],
+              quantity: newItems[existingItemIndex].quantity + item.quantity
+            };
+            return { items: newItems, isOpen: true };
+          } else {
+            // Add as new item since options are different
+            return { 
+              items: [...state.items, item],
+              isOpen: true
+            };
+          }
         });
 
         // Sync entire cart state with database
@@ -135,9 +147,30 @@ export const useCartStore = create<CartStore>()(
       removeItem: async (id) => {
         const user = useAuthStore.getState().user;
 
+        // Parse the composite key back into id and options
+        const [itemId, optionsString] = id.split('::');
+        const options = optionsString ? JSON.parse(optionsString) : null;
+
         // Update local state
         set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
+          items: state.items.filter((item) => {
+            // If no options in key, just match ID
+            if (!optionsString) {
+              return item.id !== itemId || item.options;
+            }
+            
+            // If item has different ID, keep it
+            if (item.id !== itemId) return true;
+            
+            // If item has no options but key does, keep it
+            if (!item.options && options) return true;
+            
+            // If item has options but key doesn't, keep it  
+            if (item.options && !options) return true;
+            
+            // Compare options objects
+            return JSON.stringify(item.options) !== optionsString;
+          }),
         }));
 
         // Sync entire cart state with database
@@ -170,9 +203,25 @@ export const useCartStore = create<CartStore>()(
       },
 
       getCartTotal: () => {
+        const subtotal = get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
+        const tax = subtotal * 0.08; // 8% tax
+        const processingFee = subtotal * 0.03; // 3% processing fee
+        return subtotal + tax + processingFee;
+      },
+
+      getCartSubtotal: () => {
         return get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
       },
 
+      getCartTax: () => {
+        const subtotal = get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
+        return subtotal * 0.08; // 8% tax
+      },
+
+      getProcessingFee: () => {
+        const subtotal = get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
+        return subtotal * 0.03; // 3% processing fee
+      },
       // Check if any items require FFL based on category
       requiresFFL: async () => {
         const items = get().items;

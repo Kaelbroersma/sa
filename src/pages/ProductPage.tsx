@@ -226,10 +226,29 @@ const ProductPage: React.FC<ProductPageProps> = ({
                       </p>
                     )}
                     <div className="flex justify-between items-center">
-                      <span className={`text-tan font-bold ${isMobile ? 'text-sm' : 'text-xl'}`}>
-                        ${product.price.toLocaleString()}
-                      </span>
-                      {renderProductInfo && renderProductInfo(product)}
+                      <div className="flex flex-col">
+                        {hasAdditionalPricing(product) ? (
+                          <>
+                            <span className={`text-tan font-bold ${isMobile ? 'text-sm' : 'text-xl'}`}>
+                              Starting at ${product.price.toLocaleString()}
+                            </span>
+                            {product.options?.colorBasePrice && (
+                              <span className="text-gray-400 text-sm">
+                                +${product.options.colorBasePrice} first color
+                              </span>
+                            )}
+                            {product.options?.additionalColorCost && (
+                              <span className="text-gray-400 text-sm">
+                                +${product.options.additionalColorCost}/additional color
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className={`text-tan font-bold ${isMobile ? 'text-sm' : 'text-xl'}`}>
+                            ${product.price.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -239,6 +258,18 @@ const ProductPage: React.FC<ProductPageProps> = ({
         </div>
       </div>
     </div>
+  );
+};
+
+// Helper function to determine if a product has additional pricing options
+const hasAdditionalPricing = (product: any): boolean => {
+  return !!(
+    product.options?.colorBasePrice ||
+    product.options?.additionalColorCost ||
+    product.options?.longAction ||
+    product.options?.deluxeVersion ||
+    product.options?.basePrepCharge ||
+    product.options?.additionalPrepCharge
   );
 };
 

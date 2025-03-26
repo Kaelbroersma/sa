@@ -73,20 +73,28 @@ export const useDuracoatStore = create<DuracoatState>((set, get) => ({
 
   calculateTotal: () => {
     const { selectedService, colors, isDirty } = get();
-    if (!selectedService?.options) return 0;
+    if (!selectedService) return 0;
+    
+    let total = selectedService.price; // Base price
 
     const {
-      additionalColorCost = 0,
+      additionalColorCost = 30,
       basePrepCharge = 50,
       additionalPrepCharge = 50
-    } = selectedService.options;
+    } = selectedService.options || {};
 
-    return (
-      selectedService.price +
-      ((colors - 1) * additionalColorCost) +
-      basePrepCharge +
-      (isDirty ? additionalPrepCharge : 0)
-    );
+    // Add cost for additional colors
+    if (colors > 1) {
+      total += (colors - 1) * additionalColorCost;
+    }
+    
+    // Add prep charges
+    total += basePrepCharge;
+    if (isDirty) {
+      total += additionalPrepCharge;
+    }
+    
+    return total;
   },
 
   clearSelections: () => set({

@@ -1,129 +1,96 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import Button from './Button';
-
-const featuredProducts = [
-  {
-    id: 'el-carbone',
-    name: 'El Carbone',
-    category: 'Premium Rifle',
-    price: 4495,
-    image: '/img/gallery/DSC_0331.jpg',
-    description: 'Carbon fiber precision rifle with custom Duracoat finish and premium components.',
-  },
-  {
-    id: 'el-carbone-alpine',
-    name: 'El Carbone Alpine',
-    category: 'Lightweight Rifle',
-    price: 3949,
-    image: '/img/gallery/DSC_0340.jpg',
-    description: 'Lightweight carbon fiber precision rifle with MDT carbon stock and custom finish.',
-  },
-  {
-    id: 'el-metale',
-    name: 'El Metale',
-    category: 'Precision Rifle',
-    price: 2495,
-    image: '/img/gallery/DSC_0319.jpg',
-    description: 'Professional-grade precision rifle with MDT LSS chassis system and custom Duracoat.',
-  },
-];
+import { productService } from '../services/productService';
+import { useMobileDetection } from './MobileDetection';
+import { getImageUrl } from '../utils/imageUtils';
 
 const FeaturedModels: React.FC = () => {
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-  
+  const navigate = useNavigate();
+  const isMobile = useMobileDetection();
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    const preloadImages = async () => {
-      const imagePromises = featuredProducts.map((product) => {
-        return new Promise((resolve, reject) => {
-          const img = new Image();
-          img.src = product.image;
-          img.onload = resolve;
-          img.onerror = reject;
-        });
-      });
-      
+    const loadFeaturedProducts = async () => {
       try {
-        await Promise.all(imagePromises);
-        setImagesLoaded(true);
-      } catch (error) {
-        console.error('Failed to preload some product images', error);
-        setImagesLoaded(true);
+        setIsLoading(true);
+        // Fetch products from your regular category
+        const result = await productService.getProductsByCategory('carnimore-models');
+        
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+
+        // Limit to only 3 products (you can adjust this logic as needed)
+        const limitedProducts = result.data?.slice(0, 3) || [];
+
+        setFeaturedProducts(limitedProducts);
+      } catch (err: any) {
+        console.error('Error fetching featured products:', err);
+        setError(err.message || 'Failed to load featured products');
+      } finally {
+        setIsLoading(false);
       }
     };
-    
-    preloadImages();
-  }, []);
+
+    loadFeaturedProducts();
+  }, []); 
+
+  const onProductClick = (slug: string) => {
+    navigate(`/shop/carnimore-models/${slug}`);
+  };
+
+  if (isLoading) {
+    return <div>Loading featured models...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
-    <section className="py-20 bg-medium-gray">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <motion.h2
-            className="font-heading text-3xl md:text-4xl font-bold mb-4"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            Featured <span className="text-tan">Models</span>
-          </motion.h2>
-          <motion.p
-            className="text-gray-400 max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            Explore our flagship custom rifles, each representing the pinnacle of precision engineering and artisanal craftsmanship. Every model is meticulously designed and built to deliver unmatched performance.
-          </motion.p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {featuredProducts.map((product, index) => (
-            <motion.div
-              key={product.id}
-              className="bg-dark-gray rounded-sm overflow-hidden shadow-luxury angular-border"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: index * 0.2 }}
-            >
-              <div className="relative h-64 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className={`w-full h-full object-cover transition-transform duration-500 hover:scale-105 ${imagesLoaded ? 'opacity-100' : 'opacity-0'}`}
-                  style={{ transition: 'opacity 0.5s ease-in-out, transform 0.5s ease-in-out' }}
-                />
-                <div className="absolute top-4 left-4 bg-tan text-black px-3 py-1 text-sm font-medium">
-                  {product.category}
-                </div>
-              </div>
-              <div className="p-6">
-                <h3 className="font-heading text-xl font-bold mb-2">{product.name}</h3>
-                <p className="text-gray-400 mb-4 line-clamp-2">{product.description}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-tan font-heading text-xl">${product.price.toLocaleString()}</span>
-                  <Link
-                    to={`/shop/carnimore-models/${product.id}`}
-                    className="text-white hover:text-tan transition-colors font-medium"
-                  >
-                    View Details
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="text-center mt-12">
-          <Button to="/shop/carnimore-models" variant="outline" size="lg">
-            View All Models
-          </Button>
-        </div>
-      </div>
+    <section className="py-20 bg-primary">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 place-items-center justify-center">
+      {featuredProducts.map((product, index) => (
+        <motion.div
+          key={product.product_id}
+          className="bg-dark-gray rounded-sm overflow-hidden shadow-luxury angular-border"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: index * 0.1 }}
+          onClick={() => onProductClick(product.slug)}
+        >
+          {/* Product Image */}
+          <div className="relative h-64 overflow-hidden">
+            <img
+              src={`/.netlify/images?url=${getImageUrl(product.images?.[0]?.image_url || '/img/Logo-Main.webp')}`}
+              alt={product.name}
+              className={`w-full h-full object-cover transition-transform duration-500 hover:scale-105 'opacity-100' : 'opacity-0'}`}
+              style={{ transition: 'opacity 0.5s ease-in-out, transform 0.5s ease-in-out' }}
+            />
+            <div className="absolute top-4 left-4 bg-tan text-black px-3 py-1 text-sm font-medium" />
+          </div>
+          {/* Product Info */}
+          <div className={`p-4 ${isMobile ? 'space-y-1' : 'p-6 space-y-2'}`}>
+            <h2 className={`font-heading font-bold group-hover:text-tan transition-colors ${isMobile ? 'text-base' : 'text-xl'}`}>
+              {product.name}
+            </h2>
+            {!isMobile && (
+              <p className="text-gray-400 line-clamp-2">
+                {product.description}
+              </p>
+            )}
+            <div className="flex justify-between items-center">
+              <span className={`text-tan font-bold ${isMobile ? 'text-sm' : 'text-xl'}`}>
+                ${product.price.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
     </section>
   );
 };

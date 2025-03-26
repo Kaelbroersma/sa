@@ -12,12 +12,6 @@ const DuracoatPage: React.FC = () => {
     navigate(`/shop/duracoat/${productSlug}`);
   };
 
-  const renderProductInfo = (product: any) => (
-    <span className="text-gray-400 text-sm">
-      +${product.options?.additionalColorCost}/color
-    </span>
-  );
-
   return (
     <ProductPage
       title="Duracoat Services"
@@ -29,7 +23,6 @@ const DuracoatPage: React.FC = () => {
       fetchProducts={fetchServices}
       clearProducts={clearServices}
       onProductClick={handleProductClick}
-      renderProductInfo={renderProductInfo}
     />
   );
 };

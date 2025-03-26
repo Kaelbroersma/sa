@@ -7,6 +7,13 @@ import type { ProductOption } from '../../types/options';
 interface OptionSelectorProps {
   categorySlug?: string;
   product: Product;
+  // Scope options
+  selectedSize?: string | null;
+  selectedType?: string | null;
+  selectedColor?: string | null;
+  onSizeSelect?: (size: string) => void;
+  onTypeSelect?: (type: string) => void;
+  onColorSelect?: (color: string) => void;
   // Carnimore Models props
   selectedCaliber: string | null;
   carnimoreOptions: Record<string, any>;
@@ -20,10 +27,10 @@ interface OptionSelectorProps {
   onDuracoatColorsChange: (count: number) => void;
   onDirtyChange: (isDirty: boolean) => void;
   // Merch props
-  selectedSize: string | null;
-  selectedColor: string | null;
-  onSizeSelect: (size: string) => void;
-  onColorSelect: (color: string) => void;
+  selectedMerchSize: string | null;
+  selectedMerchColor: string | null;
+  onMerchSizeSelect: (size: string) => void;
+  onMerchColorSelect: (color: string) => void;
 }
 
 const OptionSelector: React.FC<OptionSelectorProps> = ({
@@ -42,11 +49,142 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
   onDuracoatColorsChange,
   onDirtyChange,
   // Merch props
+  selectedMerchSize,
+  selectedMerchColor,
+  onMerchSizeSelect,
+  onMerchColorSelect,
+  // Scope options
   selectedSize,
+  selectedType,
   selectedColor,
   onSizeSelect,
+  onTypeSelect,
   onColorSelect
 }) => {
+  // Render scope and accessory options
+  const renderScopeOptions = () => {
+    const { sizes = [], types = [], colors = [] } = product.options || {};
+
+    // Helper function to get price display
+    const getPriceDisplay = (price: number) => {
+      return price ? `$${price.toFixed(2)}` : '';
+    };
+
+    return (
+      <div className="space-y-8">
+        {/* Size Selection */}
+        {sizes?.length > 0 && (
+          <div>
+            <h3 className="font-heading text-xl font-bold mb-4">
+              Select Size <span className="text-tan">*</span>
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {sizes.map((sizeOption, index) => {
+                const sizeValue = typeof sizeOption === 'string' ? sizeOption : sizeOption.size;
+                const sizePrice = typeof sizeOption === 'object' ? sizeOption.price : null;
+                return (
+                <button
+                  key={`scope-size-${sizeValue}-${index}`}
+                  onClick={() => onSizeSelect?.(sizeValue)}
+                  className={`px-4 py-3 rounded-sm transition-colors ${
+                    selectedSize === sizeValue
+                      ? 'bg-tan text-black'
+                      : 'bg-dark-gray hover:bg-tan/10'
+                  }`}
+                >
+                  <div>
+                    <span className="block">{sizeValue}</span>
+                    {sizePrice && (
+                      <span className="text-sm opacity-75 block">
+                        {getPriceDisplay(sizePrice)}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Type Selection */}
+        {types?.length > 0 && (
+          <div>
+            <h3 className="font-heading text-xl font-bold mb-4">
+              Select Type <span className="text-tan">*</span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {types.map((typeOption) => (
+                <button
+                  key={`scope-type-${typeOption.name}`}
+                  onClick={() => onTypeSelect?.(typeOption.name)}
+                  className={`p-4 rounded-sm transition-colors ${
+                    selectedType === typeOption.name
+                      ? 'bg-tan text-black'
+                      : 'bg-dark-gray hover:bg-tan/10'
+                  }`}
+                >
+                  <div>
+                    <span className="block">{typeOption.name}</span>
+                    <span className="text-sm opacity-75 block">
+                      ${typeOption.price.toFixed(2)}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Color Selection */}
+        {colors?.length > 0 && (
+          <div>
+            <h3 className="font-heading text-xl font-bold mb-4">
+              Select Color
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {colors.map((colorOption, index) => {
+                const colorName = typeof colorOption === 'string' ? colorOption : colorOption.name;
+                const colorValue = typeof colorOption === 'object' ? colorOption.value : colorOption;
+                const priceAdjustment = typeof colorOption === 'object' ? colorOption.price_adjustment : null;
+                return (
+                <button
+                  key={`scope-color-${colorName}-${index}`}
+                  onClick={() => onColorSelect?.(colorName)}
+                  className={`flex items-center p-4 rounded-sm transition-colors ${
+                    selectedColor === colorName
+                      ? 'bg-tan text-black'
+                      : 'bg-dark-gray hover:bg-tan/10'
+                  }`}
+                >
+                  <div className="flex items-center space-x-4 w-full">
+                    <div
+                      className="w-8 h-8 rounded-full flex-shrink-0 border-2"
+                      style={{ 
+                        backgroundColor: colorValue,
+                        borderColor: selectedColor === colorName ? 'currentColor' : 'transparent'
+                      }}
+                    />
+                    <div className="flex-grow">
+                      <span className="block">{colorName}</span>
+                      {priceAdjustment && priceAdjustment !== 0 && (
+                        <span className="text-sm opacity-75 block">
+                          {priceAdjustment > 0 ? '+' : '-'}
+                          ${Math.abs(priceAdjustment).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +211,7 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
   // Render Carnimore Models options
   const renderCarnimoreOptions = () => {
     const { availableCalibers = [] } = product.options || {};
+    const isBarreledAction = categorySlug === 'barreled-actions';
 
     // Check if this model has the Deluxe Version option enabled
     const hasDeluxeVersion = productOptions.some(po => 
@@ -80,18 +219,18 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
       po.is_enabled && 
       po.override_values?.value === true
     );
-    
+
     return (
       <div className="space-y-6">
         {/* Caliber Selection */}
         <div>
-          <h3 className="font-heading text-xl font-bold mb-4">
+          <h2 className="font-heading text-xl font-bold mb-4">
             Select Caliber <span className="text-tan">*</span>
-          </h3>
+          </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {availableCalibers.map((caliber) => (
               <button
-                key={caliber}
+                key={`carnimore-caliber-${caliber}`}
                 onClick={() => onCaliberSelect(caliber)}
                 className={`px-4 py-3 rounded-sm transition-colors ${
                   selectedCaliber === caliber
@@ -139,31 +278,82 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
           )}
 
           {/* Duracoat Colors Selection */}
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Duracoat Colors (Included) <span className="text-tan">*</span>
-            </label>
-            <div className="flex items-center justify-between mb-2">
-              <button
-                onClick={() => onCarnimoreColorsChange(carnimoreColors - 1)}
-                className="bg-dark-gray p-2 rounded-sm hover:bg-tan/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={carnimoreColors <= 1}
-              >
-                <Minus size={20} />
-              </button>
-              <span className="text-2xl font-bold">{carnimoreColors}</span>
-              <button
-                onClick={() => onCarnimoreColorsChange(carnimoreColors + 1)}
-                className="bg-dark-gray p-2 rounded-sm hover:bg-tan/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={carnimoreColors >= 5}
-              >
-                <Plus size={20} />
-              </button>
+          {isBarreledAction ? (
+            <div className="mt-6">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={carnimoreOptions.wantsDuracoat || false}
+                  onChange={(e) => {
+                    onOptionChange('wantsDuracoat', e.target.checked);
+                    if (!e.target.checked) {
+                      onCarnimoreColorsChange(0);
+                    } else {
+                      onCarnimoreColorsChange(1);
+                    }
+                  }}
+                  className="form-checkbox text-tan rounded-sm"
+                />
+                <span className="text-gray-300">Add Duracoat Finish (+${product.options?.colorBasePrice || 150})</span>
+              </label>
+              
+              {carnimoreOptions.wantsDuracoat && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Number of Colors
+                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <button
+                      onClick={() => onCarnimoreColorsChange(carnimoreColors - 1)}
+                      className="bg-dark-gray p-2 rounded-sm hover:bg-tan/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={carnimoreColors <= 1}
+                    >
+                      <Minus size={20} />
+                    </button>
+                    <span className="text-2xl font-bold">{carnimoreColors}</span>
+                    <button
+                      onClick={() => onCarnimoreColorsChange(carnimoreColors + 1)}
+                      className="bg-dark-gray p-2 rounded-sm hover:bg-tan/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={carnimoreColors >= 5}
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
+                  <div className="text-gray-400 text-sm space-y-1">
+                    {carnimoreColors > 1 && (
+                      <p>Additional colors: +${(carnimoreColors - 1) * (product.options?.additionalColorCost || 30)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-            <p className="text-gray-400 text-sm">
-              Select between 1 and 5 colors for your custom Duracoat finish
-            </p>
-          </div>
+          ) : (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Duracoat Colors (Included)
+              </label>
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => onCarnimoreColorsChange(carnimoreColors - 1)}
+                  className="bg-dark-gray p-2 rounded-sm hover:bg-tan/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={carnimoreColors <= 1}
+                >
+                  <Minus size={20} />
+                </button>
+                <span className="text-2xl font-bold">{carnimoreColors}</span>
+                <button
+                  onClick={() => onCarnimoreColorsChange(carnimoreColors + 1)}
+                  className="bg-dark-gray p-2 rounded-sm hover:bg-tan/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={carnimoreColors >= 5}
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+              <p className="text-gray-400 text-sm">
+                Select between 1 and 5 colors for your custom finish
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -177,15 +367,6 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
       basePrepCharge = 50,
       additionalPrepCharge = 50
     } = product.options || {};
-
-    const calculateTotal = () => {
-      return (
-        product.price +
-        ((duracoatColors - 1) * additionalColorCost) +
-        basePrepCharge +
-        (isDirty ? additionalPrepCharge : 0)
-      );
-    };
 
     return (
       <div className="space-y-6">
@@ -257,7 +438,12 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
             <div className="border-t border-gunmetal-light pt-4">
               <div className="flex justify-between items-center">
                 <span className="font-bold">Total:</span>
-                <span className="text-tan text-2xl font-bold">${calculateTotal()}</span>
+                <span className="text-tan text-2xl font-bold">${(
+                  product.price + 
+                  (duracoatColors > 1 ? (duracoatColors - 1) * additionalColorCost : 0) +
+                  basePrepCharge +
+                  (isDirty ? additionalPrepCharge : 0)
+                ).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -268,7 +454,13 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
 
   // Render Merch options
   const renderMerchOptions = () => {
-    const { sizes = [], colors = [] } = product.options || {};
+    if (!product.options) return null;
+
+    // Handle both string array and object array for sizes
+    const sizes = (product.options.sizes || []).map(size => 
+      typeof size === 'string' ? { size } : size
+    );
+    const colors = Array.isArray(product.options.colors) ? product.options.colors : [];
 
     return (
       <div className="space-y-8">
@@ -279,21 +471,24 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
               Select Size <span className="text-tan">*</span>
             </h3>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-              {sizes.map((size) => (
+              {sizes.map((sizeOption, index) => {
+                const sizeValue = typeof sizeOption === 'string' ? sizeOption : sizeOption.size;
+                return (
                 <button
-                  key={size}
-                  onClick={() => onSizeSelect(size)}
+                  key={`merch-size-${sizeValue}-${index}`}
+                  onClick={() => onMerchSizeSelect(sizeValue)}
                   className={`px-4 py-3 rounded-sm transition-colors ${
-                    selectedSize === size
+                    selectedMerchSize === sizeValue
                       ? 'bg-tan text-black'
                       : 'bg-dark-gray hover:bg-tan/10'
                   }`}
                 >
-                  {size}
+                  {sizeValue}
                 </button>
-              ))}
+                );
+              })}
             </div>
-            {!selectedSize && (
+            {!selectedMerchSize && (
               <p className="text-red-400 text-sm mt-2">Please select a size</p>
             )}
           </div>
@@ -308,10 +503,10 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {colors.map((color) => (
                 <button
-                  key={color.name}
-                  onClick={() => onColorSelect(color.name)}
+                  key={`merch-color-${color.name}`}
+                  onClick={() => onMerchColorSelect(color.name)}
                   className={`flex items-center p-4 rounded-sm transition-colors ${
-                    selectedColor === color.name
+                    selectedMerchColor === color.name
                       ? 'bg-tan text-black'
                       : 'bg-dark-gray hover:bg-tan/10'
                   }`}
@@ -321,7 +516,7 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
                       className="w-8 h-8 rounded-full flex-shrink-0 border-2"
                       style={{ 
                         backgroundColor: color.value,
-                        borderColor: selectedColor === color.name ? 'currentColor' : 'transparent'
+                        borderColor: selectedMerchColor === color.name ? 'currentColor' : 'transparent'
                       }}
                     />
                     <div className="flex-grow">
@@ -334,7 +529,7 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
                 </button>
               ))}
             </div>
-            {!selectedColor && (
+            {!selectedMerchColor && (
               <p className="text-red-400 text-sm mt-2">Please select a color</p>
             )}
           </div>
@@ -346,13 +541,15 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
   // Render options based on category
   switch (categorySlug) {
     case 'carnimore-models':
+    case 'barreled-actions':
       return renderCarnimoreOptions();
     case 'duracoat':
       return renderDuracoatOptions();
     case 'merch':
       return renderMerchOptions();
     default:
-      return null;
+      // For scopes and accessories
+      return renderScopeOptions();
   }
 };
 

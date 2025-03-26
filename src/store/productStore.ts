@@ -81,7 +81,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
   setSelectedProduct: (product) => set({ 
     selectedProduct: product,
     selectedCaliber: null,
-    selectedOptions: {},
+    selectedOptions: {
+      wantsDuracoat: false
+    },
     colors: 1
   }),
 
@@ -94,10 +96,14 @@ export const useProductStore = create<ProductState>((set, get) => ({
     }
   })),
 
-  setColors: (count) => set({ colors: Math.min(Math.max(1, count), 5) }),
+  setColors: (count) => set((state) => {
+    const isBarreledAction = state.selectedProduct?.category_id === 'barreled-actions';
+    const minColors = isBarreledAction ? 0 : 1;
+    return { colors: Math.min(Math.max(minColors, count), 5) };
+  }),
 
   calculateTotalPrice: () => {
-    const { selectedProduct, selectedOptions } = get();
+    const { selectedProduct, selectedOptions, colors } = get();
     if (!selectedProduct) return 0;
 
     let total = selectedProduct.price;
@@ -105,6 +111,14 @@ export const useProductStore = create<ProductState>((set, get) => ({
     // Add option prices
     if (selectedOptions.longAction) total += 150;
     if (selectedOptions.deluxeVersion) total += 300;
+    if (selectedOptions.wantsDuracoat) {
+      const colorBasePrice = selectedProduct.options?.colorBasePrice || 150;
+      const additionalColorCost = selectedProduct.options?.additionalColorCost || 30;
+      total += colorBasePrice; // Base Duracoat price
+      if (colors > 1) {
+        total += (colors - 1) * additionalColorCost; // Additional colors
+      }
+    }
 
     return total;
   },

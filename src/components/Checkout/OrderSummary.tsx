@@ -1,23 +1,21 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Truck } from 'lucide-react';
-import type { CartItem } from '../../store/cartStore';
+import { CartItem, useCartStore } from '../../store/cartStore';
 
 interface OrderSummaryProps {
   items: CartItem[];
-  subtotal: number;
-  tax: number;
-  total: number;
   className?: string;
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   items,
-  subtotal,
-  tax,
-  total,
   className = ''
 }) => {
+  const subtotal = useCartStore(state => state.getCartSubtotal());
+  const tax = useCartStore(state => state.getCartTax());
+  const processingFee = useCartStore(state => state.getProcessingFee());
+  const total = useCartStore(state => state.getCartTotal());
   const formatOptionLabel = (key: string, value: any): string => {
     switch (key) {
       case 'caliber':
@@ -83,8 +81,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <span>${subtotal.toFixed(2)}</span>
         </div>
         <div className="flex justify-between text-gray-400">
-          <span>Tax</span>
+          <span>Sales Tax</span>
           <span>${tax.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between text-gray-400">
+          <span>Card Processing Fee (3%)</span>
+          <span>${processingFee.toFixed(2)}</span>
         </div>
         <div className="flex justify-between font-bold text-lg pt-2 border-t border-gunmetal-light">
           <span>Total</span>

@@ -175,11 +175,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   };
 
-  // Calculate order summary
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.08;
-  const total = subtotal + tax;
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
@@ -189,27 +184,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         </div>
       )}
 
-      {/* Order Summary */}
-      <div className="bg-dark-gray p-6 rounded-sm mb-6">
-        <h3 className="font-heading text-xl font-bold mb-4">Order Summary</h3>
-        <div className="space-y-2">
-          {items.map((item) => (
-            <div key={item.id} className="flex justify-between">
-              <span>{item.quantity}x {item.name}</span>
-              <span>${(item.price * item.quantity).toFixed(2)}</span>
-            </div>
-          ))}
-          <div className="border-t border-gunmetal-light pt-2 mt-2">
-            <div className="flex justify-between font-bold">
-              <span>Total</span>
-              <span className="text-tan">${total.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <h3 className="font-heading text-xl font-bold mb-6">Payment Information</h3>
-      
       <div className="space-y-4">
         {/* Name on Card */}
         <div>
@@ -417,7 +391,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       </div>
 
       <p className="mt-4 text-sm text-gray-400 text-center">
-        Your payment information is securely processed.<br />
+        Your payment information is securely processed by EProcessingNetwork.<br />
         We do not store your card details.
       </p>
     </form>

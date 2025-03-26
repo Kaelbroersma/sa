@@ -211,7 +211,8 @@ const CheckoutPage: React.FC = () => {
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
-  const total = subtotal + tax;
+  const processingFee = subtotal * 0.03;
+  const total = subtotal + tax + processingFee;
 
   return (
     <div className="pt-24 pb-16">
@@ -318,9 +319,6 @@ const CheckoutPage: React.FC = () => {
             <div className="lg:col-span-1">
               <OrderSummary
                 items={items}
-                subtotal={subtotal}
-                tax={tax}
-                total={total}
                 className="lg:sticky lg:top-24"
               />
             </div>

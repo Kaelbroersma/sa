@@ -5,7 +5,7 @@ import ProductPage from '../ProductPage';
 
 const BarreledActionsPage: React.FC = () => { // Updated component name
   const navigate = useNavigate();
-  const { products, loading, error, fetchProducts, clearProducts } = useProductStore();
+  const { products, loading, error, fetchProducts } = useProductStore();
 
   const handleProductClick = (productSlug: string) => {
     navigate(`/shop/barreled-actions/${productSlug}`); // Fixed slug
@@ -20,8 +20,8 @@ const BarreledActionsPage: React.FC = () => { // Updated component name
       loading={loading}
       error={error}
       fetchProducts={fetchProducts}
-      clearProducts={clearProducts}
-      onProductClick={handleProductClick}
+      clearProducts={() => {}}
+      onProductClick={handleProductClick} 
     />
   );
 };
