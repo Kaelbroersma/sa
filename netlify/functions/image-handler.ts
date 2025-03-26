@@ -1,6 +1,5 @@
 import { Handler } from '@netlify/functions';
 import sharp from 'sharp';
-import fetch from 'node-fetch';
 
 interface ImageOptions {
   width?: number;
@@ -42,7 +41,13 @@ export const handler: Handler = async (event) => {
     const fullUrl = url.startsWith('/')
       ? `https://carnimore.netlify.app${url}`
       : url;
-    const response = await fetch(fullUrl);
+    
+    // Use native fetch if available, otherwise import dynamically
+    const fetchModule = typeof fetch !== 'undefined' 
+      ? fetch 
+      : (await import('node-fetch')).default;
+
+    const response = await fetchModule(fullUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
