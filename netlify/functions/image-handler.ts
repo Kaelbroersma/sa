@@ -39,15 +39,21 @@ export const handler: Handler = async (event) => {
       options.quality = 80;
     }
 
-    const fullUrl = url.startsWith('/')
-      ? `https://carnimore.netlify.app${url}`
-      : url;
+    // Handle both absolute and relative URLs
+    const fullUrl = url.startsWith('http') 
+      ? url 
+      : `${process.env.URL || 'http://localhost:8888'}${url}`;
+
+    console.log('Fetching image:', {
+      timestamp: new Date().toISOString(),
+      url: fullUrl
+    });
+
     const response = await fetch(fullUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
 
-    // Use arrayBuffer instead of buffer
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -59,43 +65,51 @@ export const handler: Handler = async (event) => {
     }
 
     if (options.width || options.height) {
-      pipeline = pipeline.resize(options.width, options.height, {
+      pipeline = pipeline.resize({
+        width: options.width,
+        height: options.height,
         withoutEnlargement: true,
         fit: 'inside'
       });
     }
 
+    let processedImage: Buffer;
+
     switch (options.format) {
       case 'webp':
-        pipeline = pipeline.webp({ 
+        processedImage = await pipeline.webp({ 
           quality: options.quality,
-          effort: 6,
+          effort: 4,
           nearLossless: true
-        });
+        }).toBuffer();
         headers['Content-Type'] = 'image/webp';
         break;
 
       case 'png':
-        pipeline = pipeline.png({ 
+        processedImage = await pipeline.png({ 
           compressionLevel: 9,
           palette: true
-        });
+        }).toBuffer();
         headers['Content-Type'] = 'image/png';
         break;
 
       default:
-        pipeline = pipeline.jpeg({ 
+        processedImage = await pipeline.jpeg({ 
           quality: options.quality,
           progressive: true,
           optimizeScans: true
-        });
+        }).toBuffer();
         headers['Content-Type'] = 'image/jpeg';
         break;
     }
 
-    const processedImage = await pipeline
-      .rotate()
-      .toBuffer();
+    console.log('Image processed successfully:', {
+      timestamp: new Date().toISOString(),
+      format: options.format,
+      width: options.width,
+      height: options.height,
+      quality: options.quality
+    });
 
     return {
       statusCode: 200,
@@ -105,9 +119,14 @@ export const handler: Handler = async (event) => {
     };
 
   } catch (error: any) {
-    console.error('Error processing image:', error);
+    console.error('Error processing image:', {
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      stack: error.stack
+    });
 
     try {
+      // Create a simple fallback image
       const fallbackImage = await sharp({
         create: {
           width: 100,
