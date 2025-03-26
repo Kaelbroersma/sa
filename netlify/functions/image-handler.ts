@@ -28,8 +28,12 @@ export const handler: Handler = async (event) => {
     }
 
     const options: ImageOptions = {
-      width: w ? parseInt(w) : undefined,
-      height: h ? parseInt(h) : undefined,
+      width: w 
+        ? Math.floor(parseInt(w) * 0.5)  // 50% of specified width
+        : (metadata.width ? Math.floor(metadata.width * 0.5) : undefined), // 50% of original width
+      height: h 
+        ? Math.floor(parseInt(h) * 0.5)  // 50% of specified height
+        : (metadata.height ? Math.floor(metadata.height * 0.5) : undefined), // 50% of original height
       quality: q ? parseInt(q) : 80,
       format: (f as ImageOptions['format']) || 'webp'
     };
