@@ -4,22 +4,22 @@
  * @returns The full URL for the image
  */
 export const getImageUrl = (path: string): string => {
-  if (!path) return '/.netlify/functions/image-handler?url=/img/Logo-Main.webp';
+  if (!path) return '/.netlify/images?url=/img/Logo-Main.webp';
   
   // If the path starts with http/https, it's already a full URL
   if (path.startsWith('http')) {
-    return `/.netlify/functions/image-handler?url=${encodeURIComponent(path)}&f=webp&q=80`;
+    return `/.netlify/images?url=${encodeURIComponent(path)}&f=webp&q=80`;
   }
   
   // If the path starts with a slash, it's a local image
   if (path.startsWith('/')) {
-    return `/.netlify/functions/image-handler?url=${encodeURIComponent(path)}&f=webp&q=80`;
+    return `/.netlify/images?url=${encodeURIComponent(path)}&f=webp&q=80`;
   }
   
   // Otherwise, construct the Supabase storage URL
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const fullUrl = `${supabaseUrl}/storage/v1/object/public/${path}`;
-  return `/.netlify/functions/image-handler?url=${encodeURIComponent(fullUrl)}&f=webp&q=80`;
+  return `/.netlify/images?url=${encodeURIComponent(fullUrl)}&f=webp&q=80`;
 };
 
 /**
