@@ -440,7 +440,7 @@ const ProductDetailsPage: React.FC = () => {
               {/* Add to Cart Button */}
               <div className="mt-8">
                 <Button
-                  variant={product.stock_quantity === 0 ? "secondary" : "primary"}
+                  variant={product.stock_quantity === 0 ? "primary" : "primary"}
                   fullWidth
                   disabled={isDisabled}
                   onClick={handleAddToCart}

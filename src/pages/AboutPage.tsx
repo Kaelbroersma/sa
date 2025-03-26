@@ -95,7 +95,7 @@ const AboutPage: React.FC = () => {
             <div className="bg-gunmetal p-8 rounded-sm shadow-luxury angular-border">
               <div className="relative mb-6">
                 <img 
-                  src="/.netlify/images?url=/img/gallery/img/Team-Jeff.jpg&width=500`"
+                  src="/img/Team-Jeff.jpg"
                   alt="Jeff Fraser"
                   className="w-full h-64 object-cover rounded-sm"
                 />
@@ -112,7 +112,7 @@ const AboutPage: React.FC = () => {
             <div className="bg-gunmetal p-8 rounded-sm shadow-luxury angular-border">
               <div className="relative mb-6">
                 <img 
-                  src="/.netlify/images?url=/img/gallery/img/Team-Dan.jpg&width=500`"
+                  src="/img/Team-Dan.jpg"
                   alt="Daniel Dupuis"
                   className="w-full h-64 object-cover rounded-sm"
                 />
