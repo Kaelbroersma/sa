@@ -38,3 +38,22 @@ export interface ProductOption {
 export interface SelectedOptions {
   [key: string]: any;
 }
+
+// Scope Options Types
+export interface ScopeReticle {
+  name: string;
+  type: 'standard' | 'premium';
+  price_adjustment?: number;
+}
+
+export interface ScopeOptions {
+  colors: Array<{
+    name: string;
+    value: string;
+    price_adjustment: number;
+  }>;
+  reticles: ScopeReticle[];
+  elevation: string[] | string;
+  turretTypes?: string[];
+  turretType?: string;
+}

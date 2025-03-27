@@ -2,12 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Minus } from 'lucide-react';
 import { optionService } from '../../services/optionService';
 import type { Product } from '../../types/database';
+import type { ScopeOptions } from '../../types/options';
 import type { ProductOption } from '../../types/options';
 
 interface OptionSelectorProps {
   categorySlug?: string;
   product: Product;
   // Scope options
+  selectedReticle?: string | null;
+  selectedElevation?: string | null;
+  selectedTurretType?: string | null;
+  onReticleSelect?: (reticle: string) => void;
+  onElevationSelect?: (elevation: string) => void;
+  onTurretTypeSelect?: (turretType: string) => void;
   selectedSize?: string | null;
   selectedType?: string | null;
   selectedColor?: string | null;
@@ -54,6 +61,12 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
   onMerchSizeSelect,
   onMerchColorSelect,
   // Scope options
+  selectedReticle,
+  selectedElevation,
+  selectedTurretType,
+  onReticleSelect,
+  onElevationSelect,
+  onTurretTypeSelect,
   selectedSize,
   selectedType,
   selectedColor,
@@ -61,15 +74,14 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
   onTypeSelect,
   onColorSelect
 }) => {
-  // Render scope and accessory options
-  const renderScopeOptions = () => {
+  // Helper function to get price display
+  const getPriceDisplay = (price: number) => {
+    return price ? `$${price.toFixed(2)}` : '';
+  };
+
+  // Render accessory options
+  const renderAccessoryOptions = () => {
     const { sizes = [], types = [], colors = [] } = product.options || {};
-
-    // Helper function to get price display
-    const getPriceDisplay = (price: number) => {
-      return price ? `$${price.toFixed(2)}` : '';
-    };
-
     return (
       <div className="space-y-8">
         {/* Size Selection */}
@@ -83,25 +95,25 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
                 const sizeValue = typeof sizeOption === 'string' ? sizeOption : sizeOption.size;
                 const sizePrice = typeof sizeOption === 'object' ? sizeOption.price : null;
                 return (
-                <button
-                  key={`scope-size-${sizeValue}-${index}`}
-                  onClick={() => onSizeSelect?.(sizeValue)}
-                  className={`px-4 py-3 rounded-sm transition-colors ${
-                    selectedSize === sizeValue
-                      ? 'bg-tan text-black'
-                      : 'bg-dark-gray hover:bg-tan/10'
-                  }`}
-                >
-                  <div>
-                    <span className="block">{sizeValue}</span>
-                    {sizePrice && (
-                      <span className="text-sm opacity-75 block">
-                        {getPriceDisplay(sizePrice)}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
+                  <button
+                    key={`accessory-size-${sizeValue}-${index}`}
+                    onClick={() => onSizeSelect?.(sizeValue)}
+                    className={`px-4 py-3 rounded-sm transition-colors ${
+                      selectedSize === sizeValue
+                        ? 'bg-tan text-black'
+                        : 'bg-dark-gray hover:bg-tan/10'
+                    }`}
+                  >
+                    <div>
+                      <span className="block">{sizeValue}</span>
+                      {sizePrice && (
+                        <span className="text-sm opacity-75 block">
+                          {getPriceDisplay(sizePrice)}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
               })}
             </div>
           </div>
@@ -116,7 +128,7 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {types.map((typeOption) => (
                 <button
-                  key={`scope-type-${typeOption.name}`}
+                  key={`accessory-type-${typeOption.name}`}
                   onClick={() => onTypeSelect?.(typeOption.name)}
                   className={`p-4 rounded-sm transition-colors ${
                     selectedType === typeOption.name
@@ -148,35 +160,35 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
                 const colorValue = typeof colorOption === 'object' ? colorOption.value : colorOption;
                 const priceAdjustment = typeof colorOption === 'object' ? colorOption.price_adjustment : null;
                 return (
-                <button
-                  key={`scope-color-${colorName}-${index}`}
-                  onClick={() => onColorSelect?.(colorName)}
-                  className={`flex items-center p-4 rounded-sm transition-colors ${
-                    selectedColor === colorName
-                      ? 'bg-tan text-black'
-                      : 'bg-dark-gray hover:bg-tan/10'
-                  }`}
-                >
-                  <div className="flex items-center space-x-4 w-full">
-                    <div
-                      className="w-8 h-8 rounded-full flex-shrink-0 border-2"
-                      style={{ 
-                        backgroundColor: colorValue,
-                        borderColor: selectedColor === colorName ? 'currentColor' : 'transparent'
-                      }}
-                    />
-                    <div className="flex-grow">
-                      <span className="block">{colorName}</span>
-                      {priceAdjustment && priceAdjustment !== 0 && (
-                        <span className="text-sm opacity-75 block">
-                          {priceAdjustment > 0 ? '+' : '-'}
-                          ${Math.abs(priceAdjustment).toFixed(2)}
-                        </span>
-                      )}
+                  <button
+                    key={`accessory-color-${colorName}-${index}`}
+                    onClick={() => onColorSelect?.(colorName)}
+                    className={`flex items-center p-4 rounded-sm transition-colors ${
+                      selectedColor === colorName
+                        ? 'bg-tan text-black'
+                        : 'bg-dark-gray hover:bg-tan/10'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-4 w-full">
+                      <div
+                        className="w-8 h-8 rounded-full flex-shrink-0 border-2"
+                        style={{ 
+                          backgroundColor: colorValue,
+                          borderColor: selectedColor === colorName ? 'currentColor' : 'transparent'
+                        }}
+                      />
+                      <div className="flex-grow">
+                        <span className="block">{colorName}</span>
+                        {priceAdjustment && priceAdjustment !== 0 && (
+                          <span className="text-sm opacity-75 block">
+                            {priceAdjustment > 0 ? '+' : '-'}
+                            ${Math.abs(priceAdjustment).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              );
+                  </button>
+                );
               })}
             </div>
           </div>
@@ -537,9 +549,170 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
       </div>
     );
   };
+  // Helper function to calculate reticle price adjustment
+  const getReticlePrice = (reticle: any) => {
+    if (reticle.type === 'premium') {
+      return reticle.price_adjustment || 0;
+    }
+    return 0;
+  };
+
+  // Render scope options
+  const renderScopeOptions = () => {
+    if (!product.options) return null;
+    const options = product.options as ScopeOptions;
+
+    // Auto-select single options on mount
+    useEffect(() => {
+      // Handle single elevation option
+      if (!Array.isArray(options.elevation) && options.elevation && !selectedElevation) {
+        onElevationSelect?.(options.elevation);
+      }
+
+      // Handle single turret type option
+      if (!Array.isArray(options.turretTypes) && options.turretType && !selectedTurretType) {
+        onTurretTypeSelect?.(options.turretType);
+      }
+    }, [options]);
+
+    return (
+      <div className="space-y-8">
+        {/* Color Selection */}
+        {options.colors && (
+          <div>
+            <h3 className="font-heading text-xl font-bold mb-4">
+              Select Color <span className="text-tan">*</span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {options.colors.map((colorOption, index) => (
+                <button
+                  key={`scope-color-${colorOption.name}-${index}`}
+                  onClick={() => onColorSelect?.(colorOption.name)}
+                  className={`flex items-center p-4 rounded-sm transition-colors ${
+                    selectedColor === colorOption.name
+                      ? 'bg-tan text-black'
+                      : 'bg-dark-gray hover:bg-tan/10'
+                  }`}
+                >
+                  <div className="flex items-center space-x-4 w-full">
+                    <div
+                      className="w-8 h-8 rounded-full flex-shrink-0 border-2"
+                      style={{ 
+                        backgroundColor: colorOption.value,
+                        borderColor: selectedColor === colorOption.name ? 'currentColor' : 'transparent'
+                      }}
+                    />
+                    <div className="flex-grow">
+                      <span className="block">{colorOption.name}</span>
+                      {colorOption.price_adjustment > 0 && (
+                        <span className="text-sm opacity-75 block">
+                          +${colorOption.price_adjustment.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Reticle Selection */}
+        {options.reticles && (
+          <div>
+            <h3 className="font-heading text-xl font-bold mb-4">
+              Select Reticle <span className="text-tan">*</span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {options.reticles.map((reticle) => (
+                <button
+                  key={reticle.name}
+                  onClick={() => onReticleSelect?.(reticle.name)}
+                  className={`p-4 rounded-sm transition-colors ${
+                    selectedReticle === reticle.name
+                      ? 'bg-tan text-black'
+                      : 'bg-dark-gray hover:bg-tan/10'
+                  }`}
+                >
+                  <div>
+                    <span className="block">{reticle.name}</span>
+                    {reticle.type === 'premium' && reticle.price_adjustment && (
+                      <span className="text-sm opacity-75 block">
+                        +${reticle.price_adjustment.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Elevation Selection */}
+        {options.elevation && (
+          <div>
+            <h3 className="font-heading text-xl font-bold mb-4 flex items-center justify-between">
+              <span>Elevation <span className="text-tan">*</span></span>
+              {!Array.isArray(options.elevation) && (
+                <span className="text-sm text-gray-400">(Auto-selected)</span>
+              )}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {(Array.isArray(options.elevation) ? options.elevation : [options.elevation]).map((elevation) => (
+                <button
+                  key={elevation}
+                  onClick={() => onElevationSelect?.(elevation)}
+                  disabled={!Array.isArray(options.elevation)}
+                  className={`p-4 rounded-sm transition-colors ${
+                    selectedElevation === elevation
+                      ? 'bg-tan text-black'
+                      : 'bg-dark-gray hover:bg-tan/10 disabled:hover:bg-dark-gray disabled:cursor-default'
+                  }`}
+                >
+                  {elevation}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Turret Type Selection */}
+        {(options.turretTypes || options.turretType) && (
+          <div>
+            <h3 className="font-heading text-xl font-bold mb-4 flex items-center justify-between">
+              <span>Turret Type <span className="text-tan">*</span></span>
+              {!Array.isArray(options.turretTypes) && options.turretType && (
+                <span className="text-sm text-gray-400">(Auto-selected)</span>
+              )}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {(Array.isArray(options.turretTypes) ? options.turretTypes : [options.turretType]).map((turretType) => (
+                turretType && (
+                  <button
+                    key={turretType}
+                    onClick={() => onTurretTypeSelect?.(turretType)}
+                    disabled={!Array.isArray(options.turretTypes)}
+                    className={`p-4 rounded-sm transition-colors ${
+                      selectedTurretType === turretType
+                        ? 'bg-tan text-black'
+                        : 'bg-dark-gray hover:bg-tan/10 disabled:hover:bg-dark-gray disabled:cursor-default'
+                    }`}
+                  >
+                    {turretType}
+                  </button>
+                )
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render options based on category
   switch (categorySlug) {
+    case 'optics':
+      return renderScopeOptions();
     case 'carnimore-models':
     case 'barreled-actions':
       return renderCarnimoreOptions();
@@ -549,7 +722,7 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
       return renderMerchOptions();
     default:
       // For scopes and accessories
-      return renderScopeOptions();
+      return renderAccessoryOptions();
   }
 };
 

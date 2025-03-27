@@ -25,24 +25,24 @@ const CartDrawer: React.FC = () => {
     switch (key) {
       case 'caliber':
         return `Caliber: ${value}`;
+      case 'reticle':
+        return `Reticle: ${value}`;
+      case 'elevation':
+        return `Elevation: ${value}`;
+      case 'turretType':
+        return `Turret: ${value}`;
+      case 'color':
+        return `Color: ${value}`;
       case 'colors':
         return `Colors: ${value}`;
       case 'longAction':
         return 'Long Action';
       case 'deluxeVersion':
         return 'Deluxe Version';
-      case 'grip':
-        return `Grip: ${value}`;
-      case 'stock':
-        return `Stock: ${value}`;
-      case 'handGuard':
-        return `Handguard: ${value}`;
-      case 'color':
-        return `Color: ${value}`;
       case 'size':
         return `Size: ${value}`;
       default:
-        return '';
+        return `${key}: ${value}`;
     }
   };
 

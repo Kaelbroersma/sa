@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useProductStore } from '../store/productStore';
+import { productService } from '../services/productService';
 import { useCartStore } from '../store/cartStore';
 import { useMobileDetection } from '../components/MobileDetection';
 import { getImageUrl } from '../utils/imageUtils';
@@ -30,12 +31,23 @@ const ProductDetailsPage: React.FC = () => {
     clearSelections
   } = useProductStore();
 
-  const { addItem } = useCartStore();
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [showLightbox, setShowLightbox] = useState(false);
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [showSpecs, setShowSpecs] = useState(false);
-  const [parentCategory, setParentCategory] = useState<string | null>(null);
+  useEffect(() => {
+    if (!categorySlug || !productSlug) return;
+    clearSelections();
+    const loadProduct = async () => {
+      try {
+        await fetchProduct(productSlug);
+      } catch (error) {
+        console.error('Failed to fetch product:', error);
+      }
+    };
+    loadProduct();
+  }, [categorySlug, productSlug]);
+
+  const handleBack = () => {
+    if (!categorySlug) return;
+    navigate(`/shop/${categorySlug}`);
+  };
 
   useEffect(() => {
     const fetchParentCategory = async () => {
@@ -61,9 +73,19 @@ const ProductDetailsPage: React.FC = () => {
 
     fetchParentCategory();
   }, [categorySlug]);
+
+  const { addItem } = useCartStore();
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showLightbox, setShowLightbox] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [showSpecs, setShowSpecs] = useState(false);
+  const [parentCategory, setParentCategory] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedReticle, setSelectedReticle] = useState<string | null>(null);
+  const [selectedElevation, setSelectedElevation] = useState<string | null>(null);
+  const [selectedTurretType, setSelectedTurretType] = useState<string | null>(null);
 
   const calculateDuracoatTotal = () => {
     if (!product) return 0;
@@ -121,15 +143,28 @@ const ProductDetailsPage: React.FC = () => {
     return total;
   };
 
-  useEffect(() => {
-    if (!categorySlug || !productSlug) return;
-    clearSelections();
-    fetchProduct(productSlug);
-  }, [categorySlug, productSlug]);
+  const calculateScopeTotal = () => {
+    if (!product) return product?.price || 0;
+    
+    let total = product.price;
+    
+    // Add color-based price adjustment
+    if (selectedColor && product.options?.colors) {
+      const colorOption = product.options.colors.find(c => c.name === selectedColor);
+      if (colorOption?.price_adjustment) {
+        total += colorOption.price_adjustment;
+      }
+    }
 
-  const handleBack = () => {
-    if (!categorySlug) return;
-    navigate(`/shop/${categorySlug}`);
+    // Add reticle-based price adjustment
+    if (selectedReticle && product.options?.reticles) {
+      const reticleOption = product.options.reticles.find(r => r.name === selectedReticle);
+      if (reticleOption?.type === 'premium' && reticleOption.price_adjustment) {
+        total += reticleOption.price_adjustment;
+      }
+    }
+
+    return total;
   };
 
   const handleAddToCart = async () => {
@@ -196,6 +231,20 @@ const ProductDetailsPage: React.FC = () => {
           break;
 
         case 'optics':
+          if (!selectedReticle || !selectedElevation || !selectedTurretType) return;
+          finalPrice = calculateScopeTotal();
+          await addItem({
+            ...baseItem,
+            price: finalPrice,
+            options: {
+              reticle: selectedReticle,
+              elevation: selectedElevation,
+              turretType: selectedTurretType,
+              color: selectedColor
+            }
+          });
+          break;
+
         case 'accessories':
         case 'mounts':
         case 'scope-covers':
@@ -238,9 +287,11 @@ const ProductDetailsPage: React.FC = () => {
 
   const needsCaliberSelection = ['carnimore-models', 'barreled-actions'].includes(categorySlug || '');
   const needsSizeColorSelection = categorySlug === 'merch';
+  const needsScopeOptions = categorySlug === 'optics';
   const isDisabled = isAddingToCart || 
     (needsCaliberSelection && !selectedCaliber) || 
     (needsSizeColorSelection && (!selectedOptions.size || !selectedOptions.color)) || 
+    (needsScopeOptions && (!selectedReticle || !selectedElevation || !selectedTurretType || !selectedColor)) ||
     (!needsSizeColorSelection && product.options?.sizes && !selectedSize) ||
     (!needsSizeColorSelection && product.options?.types && !selectedType);
 
@@ -250,10 +301,15 @@ const ProductDetailsPage: React.FC = () => {
     if (needsSizeColorSelection && (!selectedOptions.size || !selectedOptions.color)) {
       return 'Select Size and Color to Continue';
     }
+    if (needsScopeOptions && (!selectedReticle || !selectedElevation || !selectedTurretType || !selectedColor)) {
+      return 'Select All Options to Continue';
+    }
     
     const price = categorySlug === 'duracoat' ? 
       calculateDuracoatTotal() : 
-      needsCaliberSelection ? calculateTotalPrice() : calculateAccessoryTotal();
+      needsCaliberSelection ? calculateTotalPrice() : 
+      needsScopeOptions ? calculateScopeTotal() :
+      calculateAccessoryTotal();
     
     return product.stock_quantity === 0 
       ? `Pre-order - $${price.toLocaleString()}`
@@ -380,6 +436,12 @@ const ProductDetailsPage: React.FC = () => {
               <OptionSelector
                 categorySlug={categorySlug}
                 product={product}
+                selectedReticle={selectedReticle}
+                selectedElevation={selectedElevation}
+                selectedTurretType={selectedTurretType}
+                onReticleSelect={setSelectedReticle}
+                onElevationSelect={setSelectedElevation}
+                onTurretTypeSelect={setSelectedTurretType}
                 selectedCaliber={selectedCaliber}
                 carnimoreOptions={selectedOptions}
                 carnimoreColors={colors}
