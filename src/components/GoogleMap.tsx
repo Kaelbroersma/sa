@@ -61,7 +61,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ className = '' }) => {
           maxZoom: 17,
           mapId: "efa854521ffb11f1"
         },
-        mapsApiKey: import.meta.env.MAPS_API_KEY,
+        mapsApiKey: process.env.MAPS_API_KEY,
         capabilities: {
           input: false,
           autocomplete: false,
