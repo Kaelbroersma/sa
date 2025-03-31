@@ -10,7 +10,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ className = '' }) => {
   useEffect(() => {
     // Create and load the API loader script
     const apiLoader = document.createElement('gmpx-api-loader');
-    apiLoader.setAttribute('key', import.meta.env.MAPS_API_KEY);
+    apiLoader.setAttribute('key', 'AIzaSyDEGr1R3707u7ruivVw5BlBU-jcPsrAX5U');
     apiLoader.setAttribute('solution-channel', 'GMP_QB_locatorplus_v11_c');
     document.head.appendChild(apiLoader);
 
@@ -61,7 +61,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ className = '' }) => {
           maxZoom: 17,
           mapId: "efa854521ffb11f1"
         },
-        mapsApiKey: process.env.MAPS_API_KEY,
+        mapsApiKey: "AIzaSyDEGr1R3707u7ruivVw5BlBU-jcPsrAX5U",
         capabilities: {
           input: false,
           autocomplete: false,

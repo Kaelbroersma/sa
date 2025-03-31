@@ -13,7 +13,6 @@ const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false);
-  const [mobileDropdownHeight, setMobileDropdownHeight] = useState<number>(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
@@ -179,12 +178,13 @@ const Navbar: React.FC = () => {
             }}
           >
             <motion.div 
-              className="flex flex-col items-center w-full px-6"
+              className="flex flex-col items-center w-full px-6 max-h-[80vh] overflow-y-auto"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              {navLinks.map((link) => (
+              {/* Show all links when shop is not open, otherwise only show Shop */}
+              {(isShopDropdownOpen ? navLinks.filter(link => link.name === 'Shop') : navLinks).map((link) => (
                 <div key={link.name} className="w-full mb-4">
                   {link.hasDropdown ? (
                     <div className="w-full">
@@ -205,7 +205,7 @@ const Navbar: React.FC = () => {
                       <AnimatePresence>
                         {isShopDropdownOpen && (
                           <motion.div 
-                            className="mt-2 bg-gunmetal-dark rounded-sm overflow-hidden"
+                            className="mt-2 bg-gunmetal-dark rounded-sm overflow-hidden max-h-[60vh] overflow-y-auto"
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
@@ -224,6 +224,13 @@ const Navbar: React.FC = () => {
                                 </button>
                               ))
                             )}
+                            {/* Back button when shop dropdown is open */}
+                            <button
+                              onClick={() => setIsShopDropdownOpen(false)}
+                              className="block w-full text-left text-gray-400 hover:text-tan hover:bg-gunmetal transition-colors px-4 py-3 border-t border-gunmetal-light"
+                            >
+                              ← Back to Menu
+                            </button>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -241,7 +248,9 @@ const Navbar: React.FC = () => {
                   )}
                 </div>
               ))}
-              <div className="flex items-center justify-center space-x-8 mt-8 w-full border-t border-gunmetal-light pt-8">
+              {/* Only show auth and cart buttons when shop dropdown is closed */}
+              {!isShopDropdownOpen && (
+                <div className="flex items-center justify-center space-x-8 mt-8 w-full border-t border-gunmetal-light pt-8">
                 <AuthButton />
                 <button
                   onClick={toggleCart}
@@ -255,6 +264,7 @@ const Navbar: React.FC = () => {
                   )}
                 </button>
               </div>
+              )}
             </motion.div>
           </motion.div>
         )}
