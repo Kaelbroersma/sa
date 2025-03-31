@@ -13,6 +13,7 @@ const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false);
+  const [mobileDropdownHeight, setMobileDropdownHeight] = useState<number>(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
@@ -33,6 +34,7 @@ const Navbar: React.FC = () => {
 
   useEffect(() => {
     setIsOpen(false);
+    setIsShopDropdownOpen(false);
   }, [location]);
 
   useEffect(() => {
@@ -164,40 +166,59 @@ const Navbar: React.FC = () => {
         {isOpen && (
           <motion.div
             className="fixed inset-0 bg-primary bg-opacity-95 z-40 lg:hidden flex flex-col justify-center items-center"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            onClick={(e) => {
+              // Close menu only if clicking the backdrop
+              if (e.target === e.currentTarget) {
+                setIsOpen(false);
+                setIsShopDropdownOpen(false);
+              }
+            }}
           >
-            <div className="flex flex-col items-center space-y-6 text-xl">
+            <motion.div 
+              className="flex flex-col items-center w-full px-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
               {navLinks.map((link) => (
-                <div key={link.name} className="relative">
+                <div key={link.name} className="w-full mb-4">
                   {link.hasDropdown ? (
-                    <>
+                    <div className="w-full">
                       <button
-                        className="flex items-center text-white hover:text-tan transition-colors"
+                        className={`flex items-center justify-between w-full py-3 px-4 rounded-sm transition-colors ${
+                          isShopDropdownOpen ? 'bg-gunmetal text-tan' : 'text-white hover:text-tan'
+                        }`}
                         onClick={() => setIsShopDropdownOpen(!isShopDropdownOpen)}
                       >
-                        {link.name}
-                        <ChevronDown size={16} className="ml-1" />
+                        <span className="text-xl">{link.name}</span>
+                        <motion.div
+                          animate={{ rotate: isShopDropdownOpen ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronDown size={20} />
+                        </motion.div>
                       </button>
                       <AnimatePresence>
                         {isShopDropdownOpen && (
                           <motion.div 
-                            className="mt-2 space-y-2"
+                            className="mt-2 bg-gunmetal-dark rounded-sm overflow-hidden"
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
                             transition={{ duration: 0.2 }}
                           >
                             {loading ? (
-                              <div className="text-gray-400">Loading categories...</div>
+                              <div className="p-4 text-gray-400">Loading categories...</div>
                             ) : (
                               categories.map((category) => (
                                 <button
                                   key={category.slug}
                                   onClick={() => handleCategoryClick(category.slug)}
-                                  className="block w-full text-center text-white hover:text-tan transition-colors py-2"
+                                  className="block w-full text-left text-gray-300 hover:text-tan hover:bg-gunmetal transition-colors px-4 py-3"
                                 >
                                   {category.name}
                                 </button>
@@ -206,20 +227,21 @@ const Navbar: React.FC = () => {
                           </motion.div>
                         )}
                       </AnimatePresence>
-                    </>
+                    </div>
                   ) : (
                     <Link
                       to={link.path}
-                      className={`text-white hover:text-tan transition-colors ${
-                        location.pathname === link.path ? 'text-tan' : ''
+                      className={`block w-full py-3 px-4 rounded-sm text-xl ${
+                        location.pathname === link.path ? 'text-tan' : 'text-white hover:text-tan'
                       }`}
+                      onClick={() => setIsOpen(false)}
                     >
                       {link.name}
                     </Link>
                   )}
                 </div>
               ))}
-              <div className="flex items-center space-x-8 mt-8">
+              <div className="flex items-center justify-center space-x-8 mt-8 w-full border-t border-gunmetal-light pt-8">
                 <AuthButton />
                 <button
                   onClick={toggleCart}
@@ -233,7 +255,7 @@ const Navbar: React.FC = () => {
                   )}
                 </button>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

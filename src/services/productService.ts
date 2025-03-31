@@ -48,13 +48,14 @@ export const productService = {
         throw new Error(result.error);
       }
 
-      // Sort images by order
-      const productWithSortedImages = result.data ? {
+      // Process product data with sorted images
+      const product = result.data ? {
         ...result.data,
+        Description_Information: result.data.Description_Information || null,
         images: result.data.images?.sort((a, b) => a.image_order - b.image_order)
       } : null;
 
-      return { data: productWithSortedImages, error: null };
+      return { data: product, error: null };
     } catch (error: any) {
       return {
         data: null,

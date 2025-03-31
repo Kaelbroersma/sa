@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Send, AlertCircle } from 'lucide-react';
 import Button from '../components/Button';
+import GoogleMap from '../components/GoogleMap';
 
 type InquiryType = 
   | 'Existing Order Update' 
@@ -311,18 +312,7 @@ const ContactPage: React.FC = () => {
         >
           <h2 className="font-heading text-2xl md:text-3xl font-bold mb-8 text-center">Find <span className="text-tan">Us</span></h2>
           
-          <div className="bg-gunmetal p-4 rounded-sm shadow-luxury">
-            <div className="aspect-w-16 aspect-h-9 w-full h-[400px] bg-dark-gray rounded-sm overflow-hidden">
-              {/* Placeholder for map - in a real implementation, you would use Google Maps or another mapping service */}
-              <div className="w-full h-full flex items-center justify-center bg-dark-gray">
-                <div className="text-center">
-                  <MapPin className="text-tan mx-auto mb-4" size={40} />
-                  <p className="text-gray-300 mb-2">1234 Precision Ave, Suite 500</p>
-                  <p className="text-gray-300">Phoenix, AZ 85001</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <GoogleMap className="bg-gunmetal p-4 rounded-sm shadow-luxury" />
         </motion.div>
         
         {/* FAQ Section */}

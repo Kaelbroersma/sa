@@ -20,6 +20,7 @@ const ProductDetailsPage: React.FC = () => {
     selectedProduct: product,
     selectedCaliber,
     selectedOptions,
+    optionErrors,
     colors,
     loading,
     error,
@@ -186,14 +187,19 @@ const ProductDetailsPage: React.FC = () => {
         case 'barreled-actions':
           if (!selectedCaliber) return;
           finalPrice = calculateTotalPrice();
+          const barreledActionOptions = {
+            caliber: selectedCaliber
+          };
+          
+          // Only add colors if duracoat was selected
+          if (selectedOptions.wantsDuracoat && colors > 0) {
+            barreledActionOptions['colors'] = colors;
+          }
+          
           await addItem({
             ...baseItem,
             price: finalPrice,
-            options: {
-              caliber: selectedCaliber,
-              colors,
-              ...selectedOptions
-            }
+            options: barreledActionOptions
           });
           break;
 
@@ -202,13 +208,15 @@ const ProductDetailsPage: React.FC = () => {
           await addItem({
             ...baseItem,
             price: finalPrice,
-            options: {
+            options: Object.entries({
               colors,
-              isDirty: selectedOptions.isDirty,
-              additionalColorCost: product.options?.additionalColorCost || 30,
-              basePrepCharge: product.options?.basePrepCharge || 50,
-              additionalPrepCharge: product.options?.additionalPrepCharge || 50
-            }
+              isDirty: selectedOptions.isDirty
+            }).reduce((acc, [key, value]) => {
+              if (value) {
+                acc[key] = value;
+              }
+              return acc;
+            }, {} as Record<string, any>)
           });
           break;
 
@@ -419,6 +427,11 @@ const ProductDetailsPage: React.FC = () => {
               <h1 className="font-heading text-3xl md:text-4xl font-bold mb-4">
                 {product.name}
               </h1>
+              {product.brand && (
+                <p className="text-tan text-lg mb-4">
+                  By {product.brand}
+                </p>
+              )}
               <p className="text-gray-400 mb-6">{product.description}</p>
 
               <div className="flex justify-between items-center mb-8">
@@ -436,6 +449,7 @@ const ProductDetailsPage: React.FC = () => {
               <OptionSelector
                 categorySlug={categorySlug}
                 product={product}
+                optionErrors={optionErrors}
                 selectedReticle={selectedReticle}
                 selectedElevation={selectedElevation}
                 selectedTurretType={selectedTurretType}
@@ -464,41 +478,6 @@ const ProductDetailsPage: React.FC = () => {
                 onColorSelect={setSelectedColor}
               />
 
-              {/* Specifications Section */}
-              {specifications && specifications.length > 0 && (
-                <div className="mb-8">
-                  <button
-                    onClick={() => setShowSpecs(!showSpecs)}
-                    className="w-full flex items-center justify-between p-4 bg-gunmetal hover:bg-gunmetal-light transition-colors rounded-sm"
-                  >
-                    <span className="font-heading text-lg">Specifications</span>
-                    {showSpecs ? (
-                      <ChevronUp className="text-tan" size={20} />
-                    ) : (
-                      <ChevronDown className="text-tan" size={20} />
-                    )}
-                  </button>
-                  
-                  {showSpecs && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="bg-gunmetal-dark p-4 mt-2 rounded-sm"
-                    >
-                      <ul className="space-y-2">
-                        {specifications.map((spec: string, index: number) => (
-                          <li key={index} className="flex items-start">
-                            <span className="text-tan mr-2">•</span>
-                            <span className="text-gray-300">{spec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </motion.div>
-                  )}
-                </div>
-              )}
               {/* Add to Cart Button */}
               <div className="mt-8">
                 <Button
@@ -516,6 +495,72 @@ const ProductDetailsPage: React.FC = () => {
                 )}
               </div>
             </motion.div>
+          </div>
+
+          {/* Product Content Divider */}
+          <div className="border-t border-gunmetal-light my-12"></div>
+          
+          {/* Product Information Sections */}
+          <div className="space-y-12">
+            {/* Details and Description */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="space-y-6"
+            >
+              <h2 className="font-heading text-2xl font-bold">Details & Description</h2>
+              <div className="bg-gunmetal rounded-sm p-6">
+                {product.description_information ? (
+                  <div className="space-y-4">
+                    {product.description_information.split('\n').map((paragraph, index) => {
+                      const trimmedParagraph = paragraph.trim();
+                      if (!trimmedParagraph) return null;
+                      
+                      if (trimmedParagraph.startsWith('•')) {
+                        return (
+                          <li key={index} className="flex items-start">
+                            <span className="text-tan mr-3">•</span>
+                            <span className="text-gray-300">{trimmedParagraph.substring(1).trim()}</span>
+                          </li>
+                        );
+                      }
+                      
+                      return (
+                        <p key={index} className="text-gray-300 leading-relaxed">
+                          {trimmedParagraph}
+                        </p>
+                      );
+                    })}
+                  </div>
+                )
+                : (
+                  <p className="text-gray-400">No detailed product information available.</p>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Specifications Section */}
+            {specifications && specifications.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="space-y-6"
+              >
+                <h2 className="font-heading text-2xl font-bold">Specifications</h2>
+                <div className="bg-gunmetal rounded-sm p-6">
+                  <ul className="space-y-4">
+                    {specifications.map((spec: string, index: number) => (
+                      <li key={index} className="flex items-start">
+                        <span className="text-tan mr-3">•</span>
+                        <span className="text-gray-300">{spec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

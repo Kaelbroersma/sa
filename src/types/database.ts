@@ -20,6 +20,7 @@ export interface Product {
   brand: string | null;
   product_status: 'available' | 'out of stock' | 'discontinued';
   added_date: string;
+  description_information: string | null;
   specifications: string[] | null;
   options: {
     // Carnimore Models options

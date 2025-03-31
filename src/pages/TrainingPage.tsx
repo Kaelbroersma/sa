@@ -155,7 +155,7 @@ const TrainingPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.7 }}
         >
-          <h2 className="font-heading text-2xl md:text-3xl font-bold mb-6">Ready to <span className="text-tan">Take Control of Your Safety?</span></h2>
+          <h2 className="font-heading text-2xl md:text-3xl font-bold mb-6">Ready to <span className="text-tan">Take Control of Your Aim?</span></h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Gain confidence, skill, and peace of mind with expert instruction. Book your class now and become a responsible, prepared gun owner.
           </p>

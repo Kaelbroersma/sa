@@ -56,4 +56,12 @@ export interface ScopeOptions {
   elevation: string[] | string;
   turretTypes?: string[];
   turretType?: string;
+  selectedColor?: string | null;
+  onSizeSelect?: (size: string) => void;
+  onTypeSelect?: (type: string) => void;
+  onColorSelect?: (color: string) => void;
+  optionErrors?: Record<string, string>;
+  // Carnimore Models props
+  selectedCaliber: string | null;
+  carnimoreOptions: Record<string, any>;
 }

@@ -8,6 +8,7 @@ interface ProductState {
   selectedProduct: Product | null;
   selectedCaliber: string | null;
   selectedOptions: Record<string, any>;
+  optionErrors: {};
   colors: number;
   loading: boolean;
   error: string | null;
@@ -29,6 +30,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
   selectedProduct: null,
   selectedCaliber: null,
   selectedOptions: {},
+  optionErrors: {},
   colors: 1,
   loading: false,
   error: null,
@@ -87,14 +89,77 @@ export const useProductStore = create<ProductState>((set, get) => ({
     colors: 1
   }),
 
-  setSelectedCaliber: (caliber) => set({ selectedCaliber: caliber }),
-
-  setSelectedOption: (key, value) => set((state) => ({
+  setSelectedCaliber: (caliber) => set({ 
+    selectedCaliber: caliber,
     selectedOptions: {
-      ...state.selectedOptions,
-      [key]: value
+      // Keep other options but update longAction based on caliber
+      ...Object.fromEntries(
+        Object.entries(get().selectedOptions).filter(([key]) => key !== 'longAction')
+      ),
+      // Automatically set longAction based on caliber
+      longAction: caliber === '7 PRC' || caliber === '30 Nosler',
+    },
+    // Clear any existing longAction error
+    optionErrors: {
+      ...get().optionErrors,
+      longAction: null
     }
-  })),
+  }),
+
+  setSelectedOption: (key, value) => set((state) => {
+    // Validate long action selection based on caliber
+    if (key === 'longAction') {
+      const caliber = state.selectedCaliber;
+      
+      // Prevent deselecting long action for required calibers
+      if (!value && (caliber === '7 PRC' || caliber === '30 Nosler')) {
+        console.log('Preventing long action deselection for', caliber);
+        return {
+          selectedOptions: state.selectedOptions,
+          optionErrors: {
+            ...state.optionErrors,
+            longAction: `${caliber} requires the long action configuration`
+          }
+        };
+      }
+      
+      // Prevent selecting long action for 6.5 Creedmoor
+      if (value && caliber === '6.5 Creedmoor') {
+        console.log('Preventing long action selection for 6.5 Creedmoor');
+        return {
+          selectedOptions: state.selectedOptions,
+          optionErrors: {
+            ...state.optionErrors,
+            longAction: '6.5 Creedmoor is only available in short action configuration'
+          }
+        };
+      }
+
+      // Clear any existing error when making a valid change
+      return {
+        selectedOptions: {
+          ...state.selectedOptions,
+          [key]: value
+        },
+        optionErrors: {
+          ...state.optionErrors,
+          longAction: null
+        }
+      };
+    }
+
+    // Clear error when valid change
+    return {
+      selectedOptions: {
+        ...state.selectedOptions,
+        [key]: value
+      },
+      optionErrors: {
+        ...state.optionErrors,
+        [key]: null
+      }
+    };
+  }),
 
   setColors: (count) => set((state) => {
     const isBarreledAction = state.selectedProduct?.category_id === 'barreled-actions';
@@ -127,6 +192,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
     selectedProduct: null,
     selectedCaliber: null,
     selectedOptions: {},
+    optionErrors: {},
     colors: 1
   }),
 
@@ -135,6 +201,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
     selectedProduct: null,
     selectedCaliber: null,
     selectedOptions: {},
+    optionErrors: {},
     colors: 1
   })
 }));

@@ -25,6 +25,7 @@ interface OptionSelectorProps {
   selectedCaliber: string | null;
   carnimoreOptions: Record<string, any>;
   carnimoreColors: number;
+  optionErrors: Record<string, string>;
   onCaliberSelect: (caliber: string) => void;
   onOptionChange: (key: string, value: any) => void;
   onCarnimoreColorsChange: (count: number) => void;
@@ -47,6 +48,7 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
   selectedCaliber,
   carnimoreOptions,
   carnimoreColors,
+  optionErrors,
   onCaliberSelect,
   onOptionChange,
   onCarnimoreColorsChange,
@@ -224,13 +226,7 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
   const renderCarnimoreOptions = () => {
     const { availableCalibers = [] } = product.options || {};
     const isBarreledAction = categorySlug === 'barreled-actions';
-
-    // Check if this model has the Deluxe Version option enabled
-    const hasDeluxeVersion = productOptions.some(po => 
-      po.option_name === 'Deluxe Version' && 
-      po.is_enabled && 
-      po.override_values?.value === true
-    );
+    const showLongAction = true; // Always show long action option for both categories
 
     return (
       <div className="space-y-6">
@@ -264,20 +260,26 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
           <h3 className="font-heading text-xl font-bold mb-4">Additional Options</h3>
           
           {/* Long Action Option */}
-          {productOptions.some(po => po.option_name === 'Long Action' && po.is_enabled) && (
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={carnimoreOptions.longAction || false}
-                onChange={(e) => onOptionChange('longAction', e.target.checked)}
-                className="form-checkbox text-tan rounded-sm"
-              />
-              <span className="text-gray-300">Long Action (+$150)</span>
-            </label>
+          {showLongAction && (
+            <div className="space-y-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={carnimoreOptions.longAction || false}
+                  onChange={(e) => onOptionChange('longAction', e.target.checked)}
+                  className="form-checkbox text-tan rounded-sm"
+                  disabled={selectedCaliber === '6.5 Creedmoor' || selectedCaliber === '7 PRC' || selectedCaliber === '30 Nosler'}
+                />
+                <span className="text-gray-300">Long Action (+$150)</span>
+              </label>
+              {optionErrors?.longAction && (
+                <p className="text-red-400 text-sm ml-6">{optionErrors.longAction}</p>
+              )}
+            </div>
           )}
           
           {/* Deluxe Version Option - Only show if enabled for this model */}
-          {hasDeluxeVersion && (
+          {productOptions.some(po => po.option_name === 'Deluxe Version' && po.is_enabled) && (
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"

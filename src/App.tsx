@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Routes, Route, useLocation, useNavigate, useMatch } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ProductPage from './pages/ProductPage';
 import Footer from './components/Footer';
@@ -34,12 +34,19 @@ import LoadingScreen from './components/LoadingScreen';
 import AgeVerification from './components/AgeVerification';
 import ScrollToTop from './components/ScrollToTop';
 import CartDrawer from './components/Cart/CartDrawer';
+import TrainingLandingPage from './pages/training/TrainingLandingPage';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Check for training view parameter
+  const isTrainingView = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('view') === 'training';
+  }, [location.search]);
   
   useEffect(() => {
     const hasVisited = sessionStorage.getItem('hasVisited');
@@ -66,69 +73,75 @@ function App() {
     <div className="layout-container">
       <ScrollToTop />
       
-      {!isVerified && (
-        <AgeVerification 
-          onAccept={handleAgeVerificationAccept} 
-          onDecline={handleAgeVerificationDecline} 
-        />
-      )}
-      
-      {isVerified && (
+      {isTrainingView ? (
+        <TrainingLandingPage />
+      ) : (
         <>
-          <LoadingScreen isLoading={isLoading} onLoadingComplete={handleLoadingComplete} />
-          
-          <div className={`flex-grow flex flex-col ${isLoading ? 'hidden' : ''}`}>
-            <Navbar />
-            <main className="flex-grow">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/shop" element={<ShopPage />} />
+          {!isVerified && (
+            <AgeVerification 
+              onAccept={handleAgeVerificationAccept} 
+              onDecline={handleAgeVerificationDecline} 
+            />
+          )}
+      
+          {isVerified && (
+            <>
+              <LoadingScreen isLoading={isLoading} onLoadingComplete={handleLoadingComplete} />
+              
+              <div className={`flex-grow flex flex-col ${isLoading ? 'hidden' : ''}`}>
+                <Navbar />
+                <main className="flex-grow">
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/shop" element={<ShopPage />} />
                 
-                {/* Category listing pages */}
-                <Route path="/shop/carnimore-models" element={<CarnimoreModelsPage />} />
-                <Route path="/shop/duracoat" element={<DuracoatPage />} />
-                <Route path="/shop/merch" element={<MerchPage />} />
+                    {/* Category listing pages */}
+                    <Route path="/shop/carnimore-models" element={<CarnimoreModelsPage />} />
+                    <Route path="/shop/duracoat" element={<DuracoatPage />} />
+                    <Route path="/shop/merch" element={<MerchPage />} />
 
-                {/* Accessories Subcategories */} 
-                <Route path="/shop/scope-covers" element={<AccessoriesPage />} />
-                <Route path="/shop/sunshades" element={<AccessoriesPage />} />
-                <Route path="/shop/ard" element={<AccessoriesPage />} />
-                <Route path="/shop/mounts" element={<AccessoriesPage />} />
-                <Route path="/shop/scope-accessories" element={<AccessoriesPage />} />
-                
-                <Route path="/shop/optics" element={<OpticsPage />} />
-                <Route path="/shop/accessories" element={<AccessoriesPage />} />
-                <Route path="/shop/nfa" element={<NFAPage />} />
-                <Route path="/shop/barreled-actions" element={<BarreledActionPage />} />
-                
-                {/* Unified product details route */}
-                <Route path="/shop/:categorySlug/:productSlug" element={<ProductDetailsPage />} />
-                
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/gallery" element={<GalleryPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                
-                {/* Account routes */}
-                <Route path="/account" element={<AccountPage />} />
-                <Route path="/account/orders" element={<AccountOrdersPage />} />
-                <Route path="/account/wishlist" element={<AccountWishlistPage />} />
-                
-                <Route path="/training" element={<TrainingPage />} />
-                <Route path="/info" element={<InfoPage />} />
-                <Route path="/legal" element={<LegalPage />} />
-                <Route path="/privacy" element={<PrivacyPage />} />
-                <Route path="/terms" element={<TermsPage />} />
-                <Route path="/shipping" element={<ShippingPage />} />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/payment/success" element={<PaymentSuccessPage />} />
-                <Route path="/payment/declined" element={<PaymentDeclinedPage />} />
-                <Route path="/payment/error" element={<PaymentErrorPage />} />
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </main>
-            <Footer />
-            <CartDrawer />
-          </div>
+                    {/* Accessories Subcategories */} 
+                    <Route path="/shop/scope-covers" element={<AccessoriesPage />} />
+                    <Route path="/shop/sunshades" element={<AccessoriesPage />} />
+                    <Route path="/shop/ard" element={<AccessoriesPage />} />
+                    <Route path="/shop/mounts" element={<AccessoriesPage />} />
+                    <Route path="/shop/scope-accessories" element={<AccessoriesPage />} />
+                    
+                    <Route path="/shop/optics" element={<OpticsPage />} />
+                    <Route path="/shop/accessories" element={<AccessoriesPage />} />
+                    <Route path="/shop/nfa" element={<NFAPage />} />
+                    <Route path="/shop/barreled-actions" element={<BarreledActionPage />} />
+                    
+                    {/* Unified product details route */}
+                    <Route path="/shop/:categorySlug/:productSlug" element={<ProductDetailsPage />} />
+                    
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/gallery" element={<GalleryPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    
+                    {/* Account routes */}
+                    <Route path="/account" element={<AccountPage />} />
+                    <Route path="/account/orders" element={<AccountOrdersPage />} />
+                    <Route path="/account/wishlist" element={<AccountWishlistPage />} />
+                    
+                    <Route path="/training" element={<TrainingPage />} />
+                    <Route path="/info" element={<InfoPage />} />
+                    <Route path="/legal" element={<LegalPage />} />
+                    <Route path="/privacy" element={<PrivacyPage />} />
+                    <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/shipping" element={<ShippingPage />} />
+                    <Route path="/checkout" element={<CheckoutPage />} />
+                    <Route path="/payment/success" element={<PaymentSuccessPage />} />
+                    <Route path="/payment/declined" element={<PaymentDeclinedPage />} />
+                    <Route path="/payment/error" element={<PaymentErrorPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </main>
+                <Footer />
+                <CartDrawer />
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
