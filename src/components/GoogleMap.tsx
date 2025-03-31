@@ -10,7 +10,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ className = '' }) => {
   useEffect(() => {
     // Create and load the API loader script
     const apiLoader = document.createElement('gmpx-api-loader');
-    apiLoader.setAttribute('key', import.meta.env.MAPS_API);
+    apiLoader.setAttribute('key', import.meta.env.MAPS_API_KEY);
     apiLoader.setAttribute('solution-channel', 'GMP_QB_locatorplus_v11_c');
     document.head.appendChild(apiLoader);
 
