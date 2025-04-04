@@ -12,9 +12,18 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 // Initialize Supabase client with service role key for admin operations
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
+  }
+});
+
+// Create a separate client for auth operations that doesn't persist sessions
+const authClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
   }
 });
 
@@ -55,8 +64,8 @@ export const handler: Handler = async (event) => {
             throw new Error('Missing required fields for signup');
           }
 
-          // Create auth user first
-          const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
+          // Create auth user first using authClient
+          const { data: signUpData, error: signUpError } = await authClient.auth.admin.createUser({
             email: payload.email,
             password: payload.password,
             email_confirm: true,
@@ -70,7 +79,7 @@ export const handler: Handler = async (event) => {
           if (signUpError) throw signUpError;
           if (!signUpData.user) throw new Error('Failed to create user');
 
-          // Insert into users table
+          // Insert into users table using main client
           const { error: userError } = await supabase
             .from('users')
             .insert([{
@@ -79,29 +88,21 @@ export const handler: Handler = async (event) => {
               first_name: payload.options.data.first_name,
               last_name: payload.options.data.last_name,
               user_role: 'customer',
-              account_status: 'active',
               accepted_terms: true,
               marketing_opt_in: payload.options.data.acceptMarketing || false
             }]);
 
           if (userError) {
             console.error('Error creating user record:', userError);
-            await supabase.auth.admin.deleteUser(signUpData.user.id);
+            await authClient.auth.admin.deleteUser(signUpData.user.id);
             throw userError;
           }
 
-          // Sign in the user immediately after signup
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: payload.email,
-            password: payload.password
-          });
-
-          if (signInError) throw signInError;
-
+          // Return the user data without signing in
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ data: signInData })
+            body: JSON.stringify({ data: signUpData })
           };
         } catch (error: any) {
           console.error('Error in signup process:', error);
@@ -118,78 +119,183 @@ export const handler: Handler = async (event) => {
         }
 
       case 'signIn':
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword(payload);
-        if (signInError) throw signInError;
+        try {
+          // Use authClient for sign in
+          const { data: signInData, error: signInError } = await authClient.auth.signInWithPassword(payload);
+          if (signInError) throw signInError;
 
-        // Update last_login in users table
-        if (signInData.user) {
-          await supabase
-            .from('users')
-            .update({ last_login: new Date().toISOString() })
-            .eq('user_id', signInData.user.id);
-        }
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ data: signInData })
-        };
-
-      case 'signOut':
-        const { error: signOutError } = await supabase.auth.signOut();
-        if (signOutError) throw signOutError;
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ success: true })
-        };
-
-      case 'getSession':
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        if (session?.user) {
-          // Get user data including super admin status
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('is_super_admin, first_name, last_name')
-            .eq('user_id', session.user.id)
-            .single();
-
-          if (userError) {
-            console.error('Error fetching user data:', userError);
+          // Update last_login in users table using main client
+          if (signInData.user) {
+            await supabase
+              .from('users')
+              .update({ last_login: new Date().toISOString() })
+              .eq('user_id', signInData.user.id);
           }
-
-          // Merge user data with session
-          const enrichedUser = {
-            ...session.user,
-            is_super_admin: userData?.is_super_admin || false,
-            user_metadata: {
-              ...session.user.user_metadata,
-              first_name: userData?.first_name || session.user.user_metadata?.first_name,
-              last_name: userData?.last_name || session.user.user_metadata?.last_name
-            }
-          };
-
-          console.log('Enriched user data:', enrichedUser);
 
           return {
             statusCode: 200,
             headers,
+            body: JSON.stringify({ data: signInData })
+          };
+        } catch (error: any) {
+          console.error('Error in signin process:', error);
+          return {
+            statusCode: 400,
+            headers,
             body: JSON.stringify({ 
-              data: {
-                ...session,
-                user: enrichedUser
+              error: { 
+                message: error.message || 'Failed to sign in',
+                details: error.details || error.message
               }
             })
           };
         }
 
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ data: session })
-        };
+      case 'signOut':
+        try {
+          // Use authClient for sign out
+          const { error: signOutError } = await authClient.auth.signOut();
+          if (signOutError) throw signOutError;
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ success: true })
+          };
+        } catch (error: any) {
+          console.error('Error in signout process:', error);
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: error.message || 'Failed to sign out',
+                details: error.details || error.message
+              }
+            })
+          };
+        }
+
+      case 'getSession':
+        try {
+          // Get session from auth client
+          const { data: { session }, error: sessionError } = await authClient.auth.getSession();
+          if (sessionError) {
+            console.error('Error getting session:', {
+              error: sessionError,
+              timestamp: new Date().toISOString()
+            });
+            throw sessionError;
+          }
+
+          if (session?.user) {
+            console.log('Session found:', {
+              userId: session.user.id,
+              timestamp: new Date().toISOString()
+            });
+
+            // Get user data including super admin status using main client
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('is_super_admin, first_name, last_name, user_role, account_status')
+              .eq('user_id', session.user.id)
+              .single();
+
+            if (userError) {
+              console.error('Error fetching user data:', {
+                error: userError,
+                userId: session.user.id,
+                timestamp: new Date().toISOString()
+              });
+              throw userError;
+            }
+
+            if (!userData) {
+              console.error('User data not found:', {
+                userId: session.user.id,
+                timestamp: new Date().toISOString()
+              });
+              throw new Error('User data not found');
+            }
+
+            // Check if account is active
+            if (userData.account_status !== 'active') {
+              console.log('Account not active:', {
+                userId: session.user.id,
+                status: userData.account_status,
+                timestamp: new Date().toISOString()
+              });
+              
+              // Sign out the user if account is not active
+              await authClient.auth.signOut();
+              
+              return {
+                statusCode: 403,
+                headers,
+                body: JSON.stringify({ 
+                  error: { 
+                    message: 'Account is not active',
+                    details: `Account status: ${userData.account_status}`
+                  }
+                })
+              };
+            }
+
+            // Merge user data with session
+            const enrichedUser = {
+              ...session.user,
+              is_super_admin: userData.is_super_admin || false,
+              user_role: userData.user_role || 'customer',
+              user_metadata: {
+                ...session.user.user_metadata,
+                first_name: userData.first_name || session.user.user_metadata?.first_name,
+                last_name: userData.last_name || session.user.user_metadata?.last_name
+              }
+            };
+
+            console.log('Enriched user data:', {
+              userId: enrichedUser.id,
+              isSuperAdmin: enrichedUser.is_super_admin,
+              userRole: enrichedUser.user_role,
+              timestamp: new Date().toISOString()
+            });
+
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ 
+                data: {
+                  ...session,
+                  user: enrichedUser
+                }
+              })
+            };
+          }
+
+          console.log('No session found:', {
+            timestamp: new Date().toISOString()
+          });
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: null })
+          };
+        } catch (error: any) {
+          console.error('Error in getSession:', {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to get session',
+                details: error.message
+              }
+            })
+          };
+        }
 
       case 'updateOrder':
         try {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { User, Package, Heart, Settings, LogOut, ShieldCheck } from 'lucide-react';
@@ -7,10 +7,15 @@ import { authService } from '../services/authService';
 
 const AccountPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, loading } = useAuthStore();
 
-  if (!user) {
-    navigate('/');
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  if (loading || !user) {
     return null;
   }
 
@@ -23,7 +28,7 @@ const AccountPage: React.FC = () => {
 
   const handleSignOut = async () => {
     await authService.signOut();
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   const isSuperAdmin = Boolean(user.is_super_admin);
