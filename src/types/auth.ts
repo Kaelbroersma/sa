@@ -1,6 +1,8 @@
 import { User } from '@supabase/supabase-js';
 
-export interface AuthUser extends User {
+// Extend the base User type from Supabase
+export interface AuthUser extends Omit<User, 'user_metadata'> {
+  is_super_admin: boolean;
   user_metadata: {
     first_name?: string;
     last_name?: string;

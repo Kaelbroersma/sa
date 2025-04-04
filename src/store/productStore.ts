@@ -24,6 +24,29 @@ interface ProductState {
   clearProducts: () => void;
 }
 
+const getCaliberActionRules = (caliber: string) => {
+  // Normalize by removing extra spaces and converting to uppercase
+  const normalizedCaliber = caliber.trim().toUpperCase();
+  
+  // Define the forbidden calibers in a consistent format
+  const FORBIDDEN_CALIBERS = ['6.5 CREEDMOOR', '6.5 PRC'];
+  const REQUIRED_CALIBERS = ['30 NOSLER', '7 PRC'];
+  
+  // Debug logging
+  console.log('Input Caliber:', caliber);
+  console.log('Normalized Caliber:', normalizedCaliber);
+  console.log('Is 6.5 PRC:', normalizedCaliber === '6.5 PRC');
+  console.log('Is in Forbidden List:', FORBIDDEN_CALIBERS.includes(normalizedCaliber));
+  
+  const rules = {
+    requiresLongAction: REQUIRED_CALIBERS.includes(normalizedCaliber),
+    forbidsLongAction: FORBIDDEN_CALIBERS.includes(normalizedCaliber)
+  };
+  
+  console.log('Final Rules:', rules);
+  return rules;
+};
+
 export const useProductStore = create<ProductState>((set, get) => ({
   products: [],
   categories: [],
@@ -110,33 +133,51 @@ export const useProductStore = create<ProductState>((set, get) => ({
     // Validate long action selection based on caliber
     if (key === 'longAction') {
       const caliber = state.selectedCaliber;
+      if (!caliber) return state;
+  
+      const rules = getCaliberActionRules(caliber);
+      
+      // Add debug logging
+      console.log('Caliber:', caliber);
+      console.log('Rules:', rules);
+      console.log('Value:', value);
+      console.log('Is Forbidden:', rules.forbidsLongAction);
       
       // Prevent deselecting long action for required calibers
-      if (!value && (caliber === '7 PRC' || caliber === '30 Nosler')) {
-        console.log('Preventing long action deselection for', caliber);
+      if (!value && rules.requiresLongAction) {
+        console.log('Blocking deselect for required long action');
         return {
-          selectedOptions: state.selectedOptions,
+          ...state,
           optionErrors: {
             ...state.optionErrors,
             longAction: `${caliber} requires the long action configuration`
+          },
+          selectedOptions: {
+            ...state.selectedOptions,
+            longAction: true // Keep it selected
           }
         };
       }
       
-      // Prevent selecting long action for 6.5 Creedmoor
-      if (value && caliber === '6.5 Creedmoor') {
-        console.log('Preventing long action selection for 6.5 Creedmoor');
+      // Prevent selecting long action for forbidden calibers
+      if (value && rules.forbidsLongAction) {
+        console.log('Blocking select for forbidden long action');
         return {
-          selectedOptions: state.selectedOptions,
+          ...state,
+          selectedOptions: {
+            ...state.selectedOptions,
+            longAction: false  // Force it to stay unselected
+          },
           optionErrors: {
             ...state.optionErrors,
-            longAction: '6.5 Creedmoor is only available in short action configuration'
+            longAction: `${caliber} is only available in short action configuration`
           }
         };
       }
-
+  
       // Clear any existing error when making a valid change
       return {
+        ...state,
         selectedOptions: {
           ...state.selectedOptions,
           [key]: value
@@ -147,9 +188,10 @@ export const useProductStore = create<ProductState>((set, get) => ({
         }
       };
     }
-
-    // Clear error when valid change
+  
+    // Handle other options...
     return {
+      ...state,
       selectedOptions: {
         ...state.selectedOptions,
         [key]: value

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { User, Package, Heart, Settings, LogOut } from 'lucide-react';
+import { User, Package, Heart, Settings, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { authService } from '../services/authService';
 
@@ -14,10 +14,20 @@ const AccountPage: React.FC = () => {
     return null;
   }
 
+  // Debug logging
+  console.log('Account page - Full user object:', user);
+  console.log('Super admin status:', {
+    is_super_admin: user.is_super_admin,
+    type: typeof user.is_super_admin
+  });
+
   const handleSignOut = async () => {
     await authService.signOut();
     navigate('/');
   };
+
+  const isSuperAdmin = Boolean(user.is_super_admin);
+  console.log('Is super admin (after boolean conversion)?', isSuperAdmin);
 
   const menuItems = [
     {
@@ -92,6 +102,31 @@ const AccountPage: React.FC = () => {
               </motion.div>
             ))}
           </div>
+
+          {/* Admin Dashboard - Full Width Section */}
+          {isSuperAdmin && (
+            <motion.div
+              className="mt-8 col-span-full"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: menuItems.length * 0.1 }}
+            >
+              <div
+                onClick={() => navigate('/admin')}
+                className="bg-gunmetal p-8 rounded-sm shadow-luxury cursor-pointer hover:bg-gunmetal-light transition-colors border border-tan/20"
+              >
+                <div className="flex items-center gap-6">
+                  <div className="bg-tan/10 p-4 rounded-sm">
+                    <ShieldCheck className="text-tan" size={32} />
+                  </div>
+                  <div>
+                    <h3 className="font-heading text-2xl font-bold text-tan mb-2">Admin Dashboard</h3>
+                    <p className="text-gray-400">Your very own dashboard for managing website content and users</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>

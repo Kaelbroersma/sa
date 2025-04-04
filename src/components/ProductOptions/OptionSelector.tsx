@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { optionService } from '../../services/optionService';
 import type { Product } from '../../types/database';
 import type { ScopeOptions } from '../../types/options';
 import type { ProductOption } from '../../types/options';
+import Button from '../Button';
 
 interface OptionSelectorProps {
   categorySlug?: string;
@@ -41,6 +43,23 @@ interface OptionSelectorProps {
   onMerchColorSelect: (color: string) => void;
 }
 
+const CaliberDisplay: React.FC<{
+  selectedCaliber: string | null;
+  recommended?: boolean;
+}> = ({ selectedCaliber, recommended }) => (
+  <div className="relative flex items-center justify-center px-4 sm:px-8 py-2 border border-tan/20 rounded-sm w-full">
+    <div className="absolute left-2">
+      <div className="w-2 h-2 rounded-full bg-tan" />
+    </div>
+    <p className="text-lg sm:text-xl font-heading text-center w-full truncate">
+      {selectedCaliber || '6.5 Creedmoor'}
+    </p>
+    <div className="absolute right-2">
+      <div className="w-2 h-2 rounded-full bg-tan" />
+    </div>
+  </div>
+);
+
 const OptionSelector: React.FC<OptionSelectorProps> = ({
   categorySlug,
   product,
@@ -76,9 +95,118 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
   onTypeSelect,
   onColorSelect
 }) => {
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+
+  // Auto-select 6.5 Creedmoor for Carnimore models
+  useEffect(() => {
+    if (categorySlug === 'carnimore-models' && !selectedCaliber) {
+      onCaliberSelect('6.5 Creedmoor');
+    }
+  }, [categorySlug, selectedCaliber, onCaliberSelect]);
+
   // Helper function to get price display
   const getPriceDisplay = (price: number) => {
     return price ? `$${price.toFixed(2)}` : '';
+  };
+
+  // Render Carnimore Models customization UI
+  const renderCarnimoreCustomization = () => {
+    const { availableCalibers = [], deluxeVersion = false } = product.options || {};
+    const isBarreledAction = categorySlug === 'barreled-actions';
+
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Customize Button */}
+          <Button
+            variant="outline"
+            onClick={() => setIsCustomizeOpen(!isCustomizeOpen)}
+            className="w-full flex items-center justify-between px-4 sm:px-6 py-2"
+          >
+            <div className="flex-1" /> {/* Spacer */}
+            <span className="flex-1 text-center text-sm sm:text-base">CUSTOMIZE RIFLE</span>
+            <div className="flex-1 flex justify-end">
+              {isCustomizeOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+          </Button>
+
+          {/* Caliber Display */}
+          <CaliberDisplay 
+            selectedCaliber={selectedCaliber} 
+            recommended={selectedCaliber === '6.5 CREEDMOOR'}
+          />
+        </div>
+
+        {/* Dropdown Content */}
+        <AnimatePresence>
+          {isCustomizeOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-gunmetal rounded-sm p-4 sm:p-6 space-y-6 sm:space-y-8">
+                {/* Caliber Selection */}
+                <div>
+                  <h3 className="font-heading text-lg sm:text-xl font-bold mb-3 sm:mb-4">
+                    Select Caliber <span className="text-tan">*</span>
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                    {availableCalibers.map((caliber) => (
+                      <button
+                        key={`carnimore-caliber-${caliber}`}
+                        onClick={() => onCaliberSelect(caliber)}
+                        className={`px-3 sm:px-4 py-2 sm:py-3 rounded-sm transition-colors text-sm sm:text-base ${
+                          selectedCaliber === caliber
+                            ? 'bg-tan text-black'
+                            : 'bg-dark-gray hover:bg-tan/10'
+                        }`}
+                      >
+                        {caliber}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rest of the customization options */}
+                <div className="space-y-4 sm:space-y-6">
+                  {/* Long Action Option */}
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={carnimoreOptions.longAction || false}
+                        onChange={(e) => onOptionChange('longAction', e.target.checked)}
+                        className="form-checkbox text-tan rounded-sm"
+                      />
+                      <span className="text-sm sm:text-base text-gray-300">Long Action (+$150)</span>
+                    </label>
+                    {optionErrors?.longAction && (
+                      <p className="text-red-400 text-sm ml-6">{optionErrors.longAction}</p>
+                    )}
+                  </div>
+
+                  {/* Deluxe Version Option - Only show if enabled for this model */}
+                  {deluxeVersion && (
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={carnimoreOptions.deluxeVersion || false}
+                        onChange={(e) => onOptionChange('deluxeVersion', e.target.checked)}
+                        className="form-checkbox text-tan rounded-sm"
+                      />
+                      <span className="text-sm sm:text-base text-gray-300">Deluxe Version: Fluted Bolt & Barrel (+$300)</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
   };
 
   // Render accessory options
@@ -268,7 +396,7 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
                   checked={carnimoreOptions.longAction || false}
                   onChange={(e) => onOptionChange('longAction', e.target.checked)}
                   className="form-checkbox text-tan rounded-sm"
-                  disabled={selectedCaliber === '6.5 Creedmoor' || selectedCaliber === '7 PRC' || selectedCaliber === '30 Nosler'}
+                  disabled={selectedCaliber === '6.5 Creedmoor' || selectedCaliber === '7 PRC' || selectedCaliber === '30 Nosler' || selectedCaliber === '6.5 PRC'}
                 />
                 <span className="text-gray-300">Long Action (+$150)</span>
               </label>
@@ -278,19 +406,6 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
             </div>
           )}
           
-          {/* Deluxe Version Option - Only show if enabled for this model */}
-          {productOptions.some(po => po.option_name === 'Deluxe Version' && po.is_enabled) && (
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={carnimoreOptions.deluxeVersion || false}
-                onChange={(e) => onOptionChange('deluxeVersion', e.target.checked)}
-                className="form-checkbox text-tan rounded-sm"
-              />
-              <span className="text-gray-300">Deluxe Version: Fluted Bolt & Barrel (+$300)</span>
-            </label>
-          )}
-
           {/* Duracoat Colors Selection */}
           {isBarreledAction ? (
             <div className="mt-6">
@@ -713,9 +828,10 @@ const OptionSelector: React.FC<OptionSelectorProps> = ({
 
   // Render options based on category
   switch (categorySlug) {
+    case 'carnimore-models':
+      return renderCarnimoreCustomization();
     case 'optics':
       return renderScopeOptions();
-    case 'carnimore-models':
     case 'barreled-actions':
       return renderCarnimoreOptions();
     case 'duracoat':

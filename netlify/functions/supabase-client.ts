@@ -147,6 +147,44 @@ export const handler: Handler = async (event) => {
       case 'getSession':
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
+
+        if (session?.user) {
+          // Get user data including super admin status
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('is_super_admin, first_name, last_name')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+          }
+
+          // Merge user data with session
+          const enrichedUser = {
+            ...session.user,
+            is_super_admin: userData?.is_super_admin || false,
+            user_metadata: {
+              ...session.user.user_metadata,
+              first_name: userData?.first_name || session.user.user_metadata?.first_name,
+              last_name: userData?.last_name || session.user.user_metadata?.last_name
+            }
+          };
+
+          console.log('Enriched user data:', enrichedUser);
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ 
+              data: {
+                ...session,
+                user: enrichedUser
+              }
+            })
+          };
+        }
+
         return {
           statusCode: 200,
           headers,
@@ -772,6 +810,504 @@ export const handler: Handler = async (event) => {
             body: JSON.stringify({ 
               error: { 
                 message: 'Failed to fetch category',
+                details: error.message
+              }
+            })
+          };
+        }
+
+      case 'adminUsers':
+        try {
+          console.log('Fetching admin users...');
+          const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select(`
+              user_id,
+              email,
+              phone_number,
+              first_name,
+              last_name,
+              user_role,
+              account_status,
+              is_super_admin,
+              last_login,
+              account_created_date,
+              marketing_opt_in
+            `)
+            .order('account_created_date', { ascending: false });
+
+          console.log('Admin users response:', { 
+            users, 
+            usersError,
+            timestamp: new Date().toISOString(),
+            table: 'users',
+            query: 'adminUsers'
+          });
+
+          if (usersError) {
+            console.error('Error fetching users:', {
+              error: usersError,
+              timestamp: new Date().toISOString()
+            });
+            return {
+              statusCode: 500,
+              headers,
+              body: JSON.stringify({ 
+                error: { 
+                  message: 'Failed to fetch users',
+                  details: usersError.message
+                }
+              })
+            };
+          }
+
+          if (!users) {
+            console.error('No users found:', {
+              timestamp: new Date().toISOString()
+            });
+            return {
+              statusCode: 404,
+              headers,
+              body: JSON.stringify({ 
+                error: { 
+                  message: 'No users found',
+                  details: 'The users table appears to be empty'
+                }
+              })
+            };
+          }
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: users })
+          };
+        } catch (error: any) {
+          console.error('Error in adminUsers:', {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch users',
+                details: error.message
+              }
+            })
+          };
+        }
+
+      case 'adminOrders':
+        try {
+          console.log('Fetching admin orders...');
+          const { data: orders, error: ordersError } = await supabase
+            .from('orders')
+            .select(`
+              order_id,
+              user_id,
+              phone_number,
+              order_status,
+              payment_status,
+              total_amount,
+              shipping_address,
+              billing_address,
+              order_date,
+              payment_method,
+              tracking_number,
+              order_items,
+              requires_ffl,
+              ffl_dealer_info,
+              created_at,
+              user:users (
+                user_id,
+                email,
+                first_name,
+                last_name,
+                phone_number
+              )
+            `)
+            .order('order_date', { ascending: false });
+
+          console.log('Admin orders response:', { 
+            orders, 
+            ordersError,
+            timestamp: new Date().toISOString(),
+            table: 'orders',
+            query: 'adminOrders'
+          });
+
+          if (ordersError) {
+            console.error('Error fetching orders:', {
+              error: ordersError,
+              timestamp: new Date().toISOString()
+            });
+            throw ordersError;
+          }
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: orders })
+          };
+        } catch (error: any) {
+          console.error('Error in adminOrders:', {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch orders',
+                details: error.message
+              }
+            })
+          };
+        }
+
+      case 'adminProducts':
+        try {
+          console.log('Fetching admin products...');
+          const { data: products, error: productsError } = await supabase
+            .from('products')
+            .select(`
+              *,
+              category:categories (
+                category_id,
+                name,
+                slug
+              ),
+              images:product_images (
+                image_id,
+                image_url,
+                is_main_image,
+                image_order
+              )
+            `)
+            .order('name');
+
+          console.log('Admin products response:', { products, productsError });
+
+          if (productsError) throw productsError;
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: products })
+          };
+        } catch (error: any) {
+          console.error('Error in adminProducts:', error);
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch products',
+                details: error.message
+              }
+            })
+          };
+        }
+
+      case 'adminCategories':
+        try {
+          console.log('Fetching admin categories...');
+          const { data: categories, error: categoriesError } = await supabase
+            .from('categories')
+            .select(`
+              *,
+              products:products (
+                product_id,
+                name,
+                slug,
+                product_status
+              )
+            `)
+            .order('name');
+
+          console.log('Admin categories response:', { categories, categoriesError });
+
+          if (categoriesError) throw categoriesError;
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: categories })
+          };
+        } catch (error: any) {
+          console.error('Error in adminCategories:', error);
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch categories',
+                details: error.message
+              }
+            })
+          };
+        }
+
+      case 'adminBlogPosts':
+        try {
+          console.log('Fetching admin blog posts...');
+          const { data: posts, error: postsError } = await supabase
+            .from('blogs')
+            .select('*')
+            .order('updated_at', { ascending: false });
+
+          console.log('Admin blog posts response:', { 
+            posts, 
+            postsError,
+            timestamp: new Date().toISOString(),
+            table: 'blogs',
+            query: 'adminBlogPosts'
+          });
+
+          if (postsError) {
+            console.error('Error fetching blog posts:', {
+              error: postsError,
+              timestamp: new Date().toISOString()
+            });
+            return {
+              statusCode: 500,
+              headers,
+              body: JSON.stringify({ 
+                error: { 
+                  message: 'Failed to fetch blog posts',
+                  details: postsError.message
+                }
+              })
+            };
+          }
+
+          if (!posts) {
+            console.error('No posts data received:', {
+              timestamp: new Date().toISOString()
+            });
+            return {
+              statusCode: 404,
+              headers,
+              body: JSON.stringify({ 
+                error: { 
+                  message: 'No blog posts found',
+                  details: 'The blog posts query returned no data'
+                }
+              })
+            };
+          }
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: posts })
+          };
+        } catch (error: any) {
+          console.error('Error in adminBlogPosts:', {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch blog posts',
+                details: error.message
+              }
+            })
+          };
+        }
+
+      case 'adminDashboardStats':
+        try {
+          console.log('Fetching dashboard statistics...');
+          
+          // Get all counts in a single query using PostgreSQL's COUNT
+          const { data: stats, error: statsError } = await supabase
+            .rpc('get_dashboard_stats')
+            .single();
+
+          console.log('RPC response:', { stats, statsError });
+
+          if (statsError) {
+            console.error('Error fetching dashboard stats:', {
+              error: statsError,
+              timestamp: new Date().toISOString()
+            });
+            return {
+              statusCode: 500,
+              headers,
+              body: JSON.stringify({ 
+                error: { 
+                  message: 'Failed to fetch dashboard statistics',
+                  details: statsError.message
+                }
+              })
+            };
+          }
+
+          if (!stats) {
+            console.error('No stats data received:', {
+              timestamp: new Date().toISOString()
+            });
+            return {
+              statusCode: 404,
+              headers,
+              body: JSON.stringify({ 
+                error: { 
+                  message: 'No statistics found',
+                  details: 'The dashboard statistics function returned no data'
+                }
+              })
+            };
+          }
+
+          console.log('Dashboard statistics response:', { 
+            stats,
+            timestamp: new Date().toISOString()
+          });
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: stats })
+          };
+        } catch (error: any) {
+          console.error('Error in adminDashboardStats:', {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch dashboard statistics',
+                details: error.message
+              }
+            })
+          };
+        }
+
+      case 'adminBlogSettings':
+        try {
+          console.log('Processing blog settings action:', {
+            timestamp: new Date().toISOString(),
+            payload: payload
+          });
+
+          if (!payload.action) {
+            throw new Error('Missing action in blog settings payload');
+          }
+
+          switch (payload.action) {
+            case 'get':
+              const { data: settings, error: getError } = await supabase
+                .from('blog_settings')
+                .select('*')
+                .single();
+
+              if (getError) {
+                // If no settings exist, return default settings
+                if (getError.code === 'PGRST116') {
+                  return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({ 
+                      data: {
+                        enable_comments: true,
+                        default_meta_title: 'My Blog',
+                        default_meta_description: 'Welcome to my blog',
+                        default_meta_keywords: 'blog, articles, news',
+                        show_author: true,
+                        show_date: true,
+                        show_reading_time: true,
+                        enable_social_sharing: true,
+                        featured_posts_count: 3
+                      }
+                    })
+                  };
+                }
+
+                console.error('Error fetching blog settings:', {
+                  error: getError,
+                  timestamp: new Date().toISOString()
+                });
+                return {
+                  statusCode: 500,
+                  headers,
+                  body: JSON.stringify({ 
+                    error: { 
+                      message: 'Failed to fetch blog settings',
+                      details: getError.message
+                    }
+                  })
+                };
+              }
+
+              return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ data: settings || {} })
+              };
+
+            case 'update':
+              if (!payload.settings) {
+                throw new Error('Missing settings in update payload');
+              }
+
+              // Ensure we have an ID for the settings
+              const settingsToUpdate = {
+                ...payload.settings,
+                id: payload.settings.id || '00000000-0000-0000-0000-000000000000',
+                updated_at: new Date().toISOString()
+              };
+
+              const { data: updatedSettings, error: updateError } = await supabase
+                .from('blog_settings')
+                .upsert(settingsToUpdate)
+                .select()
+                .single();
+
+              if (updateError) {
+                console.error('Error updating blog settings:', {
+                  error: updateError,
+                  timestamp: new Date().toISOString()
+                });
+                return {
+                  statusCode: 500,
+                  headers,
+                  body: JSON.stringify({ 
+                    error: { 
+                      message: 'Failed to update blog settings',
+                      details: updateError.message
+                    }
+                  })
+                };
+              }
+
+              return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ data: updatedSettings })
+              };
+
+            default:
+              throw new Error(`Invalid blog settings action: ${payload.action}`);
+          }
+        } catch (error: any) {
+          console.error('Error in adminBlogSettings:', {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to process blog settings',
                 details: error.message
               }
             })

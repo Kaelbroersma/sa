@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Scale, FileText, Shield, AlertTriangle } from 'lucide-react';
+import { Scale, FileText, Shield, AlertTriangle, BadgeDollarSign } from 'lucide-react';
 
 const TermsPage: React.FC = () => {
   return (
@@ -74,6 +74,86 @@ const TermsPage: React.FC = () => {
                   <li>• Licensing requirements</li>
                   <li>• Transfer and shipping regulations</li>
                 </ul>
+              </div>
+            </div>
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
+            <div className="flex items-center mb-6">
+              <BadgeDollarSign className="text-tan mr-3" size={24} />
+              <h2 className="font-heading text-2xl font-bold">Terms of Sale</h2>
+            </div>
+            <div className="bg-gunmetal p-8 rounded-sm shadow-luxury">
+              <div className="space-y-6 text-gray-300">
+                <p>By purchasing products from Carnimore, you agree to the following Terms of Sale. Please read them carefully before making a purchase.</p>
+                
+                <div>
+                  <h3 className="text-tan text-lg font-heading mb-2">Payment and Processing Fees</h3>
+                  <ul className="space-y-2">
+                    <li>• All online purchases are subject to a 3% processing fee</li>
+                    <li>• The processing fee will be applied at checkout in addition to the price of the product</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-tan text-lg font-heading mb-2">Legality of Purchase</h3>
+                  <ul className="space-y-2">
+                    <li>• You must comply with all applicable federal, state, and local laws regarding the purchase and ownership of firearms</li>
+                    <li>• If it is discovered that your purchase violates any legal regulations, Carnimore reserves the right to confiscate and retain the product</li>
+                    <li>• It is your responsibility to ensure that you are legally allowed to purchase and own the firearm in your jurisdiction</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-tan text-lg font-heading mb-2">No Refunds or Returns</h3>
+                  <ul className="space-y-2">
+                    <li>• All sales are final, and refunds are not allowed under any circumstances</li>
+                    <li>• Once a purchase is made, no returns, exchanges, or refunds will be processed</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-tan text-lg font-heading mb-2">Shipping and Delivery</h3>
+                  <ul className="space-y-2">
+                    <li>• Shipping costs and delivery times will be calculated at checkout</li>
+                    <li>• Carnimore is not responsible for delays caused by shipping carriers or incorrect address information provided by the customer</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-tan text-lg font-heading mb-2">Age Verification</h3>
+                  <ul className="space-y-2">
+                    <li>• You must be at least 18 years of age to purchase firearms from Carnimore, subject to the laws of your governing state</li>
+                    <li>• Age verification may be required before shipment of any firearms</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-tan text-lg font-heading mb-2">Customer Responsibilities</h3>
+                  <ul className="space-y-2">
+                    <li>• It is your responsibility to inspect your purchased products upon receipt and report any discrepancies or issues within 7 days of receiving your order</li>
+                    <li>• You agree to follow all legal and safety guidelines for owning and operating firearms</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-tan text-lg font-heading mb-2">Modification of Terms</h3>
+                  <ul className="space-y-2">
+                    <li>• Carnimore reserves the right to update or modify these Terms of Sale at any time</li>
+                    <li>• Changes will be posted on the website, and the updated terms will apply to future purchases</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-tan text-lg font-heading mb-2">Governing Law</h3>
+                  <ul className="space-y-2">
+                    <li>• These Terms of Sale shall be governed by the laws of the jurisdiction in which Carnimore operates</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </motion.section>

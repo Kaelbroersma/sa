@@ -21,6 +21,26 @@ interface Order {
   payment_status: 'paid' | 'pending' | 'failed';
   total_amount: number;
   shipping_address: string;
+  ffl_dealer_info?: {
+    ffl_id: string;
+    lic_cnty: string;
+    lic_dist: string;
+    lic_regn: string;
+    lic_seqn: string;
+    lic_type: string;
+    lic_xprdte: string;
+    license_name: string;
+    business_name: string;
+    mail_street: string;
+    mail_city: string;
+    mail_state: string;
+    mail_zip_code: string;
+    premise_street: string;
+    premise_city: string;
+    premise_state: string;
+    premise_zip_code: string;
+    voice_phone: string;
+  };
   order_date: string;
   payment_method: string;
   tracking_number?: string;
@@ -102,7 +122,7 @@ const AccountOrdersPage: React.FC = () => {
       case 'longAction':
         return 'Long Action';
       case 'deluxeVersion':
-        return 'Deluxe Version';
+        return 'Deluxe Version: Fluted Bolt & Barrel';
       case 'grip':
         return `Grip: ${value}`;
       case 'stock':
@@ -236,13 +256,33 @@ const AccountOrdersPage: React.FC = () => {
 
                     {/* Shipping Information */}
                     <div className="border-t border-gunmetal-light pt-4">
-                      <div className="flex items-start">
-                        <Truck className="text-tan mr-2 flex-shrink-0 mt-1" size={18} />
-                        <div>
-                          <p className="text-sm text-gray-400">Shipping Address:</p>
-                          <p className="text-sm">{order.shipping_address}</p>
+                      {order.ffl_dealer_info && (
+                        <div className="flex items-start mb-4">
+                          <Package className="text-tan mr-2 flex-shrink-0 mt-1" size={18} />
+                          <div>
+                            <p className="text-sm text-gray-400">FFL Dealer Information:</p>
+                            <p className="text-sm font-medium">
+                              {order.ffl_dealer_info.license_name}
+                              {order.ffl_dealer_info.business_name && ` (${order.ffl_dealer_info.business_name})`}
+                            </p>
+                            <p className="text-sm">
+                              {order.ffl_dealer_info.premise_street}<br />
+                              {order.ffl_dealer_info.premise_city}, {order.ffl_dealer_info.premise_state} {order.ffl_dealer_info.premise_zip_code}
+                            </p>
+                            <p className="text-sm text-gray-400">Phone: {order.ffl_dealer_info.voice_phone}</p>
+                            <p className="text-sm text-gray-400">FFL License: {order.ffl_dealer_info.ffl_id}</p>
+                          </div>
                         </div>
-                      </div>
+                      )}
+                      {order.shipping_address && (
+                        <div className="flex items-start">
+                          <Truck className="text-tan mr-2 flex-shrink-0 mt-1" size={18} />
+                          <div>
+                            <p className="text-sm text-gray-400">Shipping Address:</p>
+                            <p className="text-sm">{order.shipping_address}</p>
+                          </div>
+                        </div>
+                      )}
                       {order.tracking_number && (
                         <div className="flex items-center mt-2">
                           <Package className="text-tan mr-2" size={18} />

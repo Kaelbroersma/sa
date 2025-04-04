@@ -188,7 +188,9 @@ const ProductDetailsPage: React.FC = () => {
           if (!selectedCaliber) return;
           finalPrice = calculateTotalPrice();
           const barreledActionOptions = {
-            caliber: selectedCaliber
+            caliber: selectedCaliber,
+            ...(selectedOptions.longAction && { longAction: true }),
+            ...(selectedOptions.deluxeVersion && { deluxeVersion: true })
           };
           
           // Only add colors if duracoat was selected

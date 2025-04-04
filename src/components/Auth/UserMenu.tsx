@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { LogOut, User, Package, Heart } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
+import { useMobileDetection } from '../MobileDetection';
 
 const UserMenu: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const isMobile = useMobileDetection();
 
   if (!user) return null;
 
@@ -17,10 +20,18 @@ const UserMenu: React.FC = () => {
     // The auth store will automatically update via polling
   };
 
+  const handleClick = () => {
+    if (isMobile) {
+      navigate('/account');
+    } else {
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleClick}
         className="text-white hover:text-tan transition-colors flex items-center space-x-2"
       >
         <User size={20} />
@@ -30,7 +41,7 @@ const UserMenu: React.FC = () => {
       </button>
 
       <AnimatePresence>
-        {isOpen && (
+        {!isMobile && isOpen && (
           <>
             {/* Backdrop */}
             <motion.div
