@@ -3,11 +3,14 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { User, Package, Heart, Settings, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useAdminStore } from '../store/adminStore';
 import { authService } from '../services/authService';
 
 const AccountPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const loading = useAuthStore((state) => state.loading);
+  const { isAdmin, isChecking, checkAdminStatus } = useAdminStore();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -15,24 +18,26 @@ const AccountPage: React.FC = () => {
     }
   }, [user, loading, navigate]);
 
-  if (loading || !user) {
-    return null;
+  // Check admin status when user changes
+  useEffect(() => {
+    if (user) {
+      checkAdminStatus(user.id);
+    }
+  }, [user, checkAdminStatus]);
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
-  // Debug logging
-  console.log('Account page - Full user object:', user);
-  console.log('Super admin status:', {
-    is_super_admin: user.is_super_admin,
-    type: typeof user.is_super_admin
-  });
+  if (!user) {
+    navigate('/', { replace: true });
+    return null;
+  }
 
   const handleSignOut = async () => {
     await authService.signOut();
     navigate('/', { replace: true });
   };
-
-  const isSuperAdmin = Boolean(user.is_super_admin);
-  console.log('Is super admin (after boolean conversion)?', isSuperAdmin);
 
   const menuItems = [
     {
@@ -73,9 +78,14 @@ const AccountPage: React.FC = () => {
                 </div>
                 <div className="ml-4">
                   <h1 className="font-heading text-2xl font-bold">
-                    {user.user_metadata.first_name} {user.user_metadata.last_name}
+                    {user.user_metadata?.first_name} {user.user_metadata?.last_name}
                   </h1>
                   <p className="text-gray-400">{user.email}</p>
+                  <div className="mt-1">
+                    {isAdmin && (
+                      <p className="text-tan font-semibold">Super Admin</p>
+                    )}
+                  </div>
                 </div>
               </div>
               <button
@@ -108,13 +118,13 @@ const AccountPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Admin Dashboard - Full Width Section */}
-          {isSuperAdmin && (
+          {/* Admin Dashboard Section */}
+          {isAdmin && (
             <motion.div
-              className="mt-8 col-span-full"
+              className="mt-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: menuItems.length * 0.1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
             >
               <div
                 onClick={() => navigate('/admin')}
@@ -126,7 +136,7 @@ const AccountPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-heading text-2xl font-bold text-tan mb-2">Admin Dashboard</h3>
-                    <p className="text-gray-400">Your very own dashboard for managing website content and users</p>
+                    <p className="text-gray-400">Manage website content and users</p>
                   </div>
                 </div>
               </div>

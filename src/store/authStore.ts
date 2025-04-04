@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { persist, PersistOptions } from 'zustand/middleware';
-import { StateCreator } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { callNetlifyFunction } from '../lib/supabase';
 import { useCartStore } from './cartStore';
 import type { AuthState, AuthUser } from '../types/auth';
+import { useAdminStore } from './adminStore';
 
 // Create a unique browser fingerprint
 const getBrowserFingerprint = () => {
@@ -21,87 +21,114 @@ const getStorageKey = () => {
   return `auth-storage-${getBrowserFingerprint()}`;
 };
 
-interface AuthStore extends AuthState {
+export const useAuthStore = create<AuthState & {
   initialize: () => Promise<void>;
   setUser: (user: AuthUser | null) => Promise<void>;
-}
-
-type AuthPersist = (
-  config: StateCreator<AuthStore>,
-  options: PersistOptions<AuthStore>
-) => StateCreator<AuthStore>;
-
-export const useAuthStore = create<AuthStore>(
-  (persist as AuthPersist)(
-    (set) => ({
+}>()(
+  persist(
+    (set, get) => ({
       user: null,
       loading: true,
       error: null,
 
       initialize: async () => {
         try {
-          // Get initial session from Netlify function
-          const { data } = await callNetlifyFunction('getSession');
+          // Check if we already have a user in state
+          const currentUser = get().user;
           
-          // Validate browser fingerprint if user exists
-          if (data?.user) {
-            const storedFingerprint = localStorage.getItem('browser-fingerprint');
-            const currentFingerprint = getBrowserFingerprint();
+          // Only fetch session if we don't have a user
+          if (!currentUser) {
+            const { data } = await callNetlifyFunction('getSession');
             
-            if (storedFingerprint && storedFingerprint !== currentFingerprint) {
-              console.warn('Browser fingerprint mismatch, signing out');
-              await callNetlifyFunction('signOut');
+            if (data?.user) {
+              const storedFingerprint = localStorage.getItem('browser-fingerprint');
+              const currentFingerprint = getBrowserFingerprint();
+              
+              if (storedFingerprint && storedFingerprint !== currentFingerprint) {
+                console.warn('Browser fingerprint mismatch, signing out');
+                await callNetlifyFunction('signOut');
+                set({ user: null, loading: false });
+                return;
+              }
+              
+              localStorage.setItem('browser-fingerprint', currentFingerprint);
+
+              // Ensure is_super_admin is a boolean
+              const enrichedUser = {
+                ...data.user,
+                is_super_admin: Boolean(data.user.is_super_admin)
+              };
+
+              set({ user: enrichedUser, loading: false });
+              
+              // Initialize admin status
+              if (enrichedUser.is_super_admin === true) {
+                useAdminStore.getState().setAdminStatus(true);
+              } else {
+                // Check admin status directly to be sure
+                await useAdminStore.getState().checkAdminStatus(enrichedUser.id);
+              }
+              
+              await useCartStore.getState().syncWithDatabase();
+            } else {
               set({ user: null, loading: false });
-              return;
             }
+          } else {
+            set({ loading: false });
             
-            // Store current fingerprint
-            localStorage.setItem('browser-fingerprint', currentFingerprint);
-          }
-          
-          set({ user: data?.user || null, loading: false });
-          
-          // Sync cart if user is logged in
-          if (data?.user) {
-            await useCartStore.getState().syncWithDatabase();
+            // Make sure admin status is set correctly
+            if (currentUser.is_super_admin === true) {
+              useAdminStore.getState().setAdminStatus(true);
+            }
           }
 
           // Set up auth state polling
           let lastCheck = Date.now();
           const checkAuth = async () => {
             try {
-              // Throttle checks to prevent excessive calls
               const now = Date.now();
-              if (now - lastCheck < 30000) { // 30 seconds minimum between checks
-                return;
-              }
+              // Increase minimum time between checks to 5 minutes (300000ms)
+              if (now - lastCheck < 300000) return;
               lastCheck = now;
 
               const { data } = await callNetlifyFunction('getSession');
-              const currentUser = useAuthStore.getState().user;
+              const currentUser = get().user;
               
-              // Handle user state changes
-              if (!data?.user && currentUser) {
-                console.log('User signed out in another tab/window');
+              // Only sign out if explicitly null and not just a network error
+              if (data === null && currentUser) {
+                console.log('Session explicitly invalidated');
                 set({ user: null });
                 await useCartStore.getState().clearCart();
-              } else if (data?.user?.id !== currentUser?.id) {
-                console.log('User state changed');
-                set({ user: data?.user || null });
+              } else if (data?.user && data.user.id !== currentUser?.id) {
+                // User ID changed - genuine user switch
+                console.log('User account changed');
+                set({ user: data.user });
                 
-                if (data?.user) {
+                if (data.user) {
                   await useCartStore.getState().syncWithDatabase();
                 } else {
                   await useCartStore.getState().clearCart();
                 }
+              } else if (data?.user && currentUser) {
+                // User exists in both places - refresh any changed properties
+                // but don't trigger a complete sign-out
+                set({ 
+                  user: {
+                    ...currentUser,
+                    ...data.user,
+                    // Ensure these critical fields remain consistent
+                    is_super_admin: data.user.is_super_admin === true
+                  } 
+                });
               }
             } catch (error) {
+              // Don't sign out on network errors
               console.error('Error checking auth state:', error);
             }
           };
 
-          // Start polling with cleanup
-          const interval = setInterval(checkAuth, 60000); // Check every minute
+          // Poll less frequently (every 10 minutes instead of every minute)
+          const interval = setInterval(checkAuth, 600000);
           window.addEventListener('beforeunload', () => clearInterval(interval));
         } catch (error: any) {
           console.error('Auth initialization error:', error);
@@ -111,11 +138,19 @@ export const useAuthStore = create<AuthStore>(
 
       setUser: async (user: AuthUser | null) => {
         if (user) {
-          // Store browser fingerprint on login
           localStorage.setItem('browser-fingerprint', getBrowserFingerprint());
+          
+          // Set admin status appropriately
+          if (user.is_super_admin === true) {
+            useAdminStore.getState().setAdminStatus(true);
+          } else {
+            // Check admin status directly
+            await useAdminStore.getState().checkAdminStatus(user.id);
+          }
         } else {
-          // Clear fingerprint on logout
           localStorage.removeItem('browser-fingerprint');
+          // Clear admin status when user is null
+          useAdminStore.getState().setAdminStatus(false);
         }
         
         set({ user, loading: false });
@@ -129,26 +164,51 @@ export const useAuthStore = create<AuthStore>(
     }),
     {
       name: getStorageKey(),
-      partialize: (state: AuthStore) => ({
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
         user: state.user,
         loading: state.loading,
         error: state.error
-      } as Partial<AuthStore>),
+      }),
       version: 1,
-      // Add storage event listener to handle cross-tab synchronization
       onRehydrateStorage: () => (state) => {
         if (state) {
+          console.log('Auth store rehydrated from storage');
+          
+          // If we have a user in storage, assume it's valid and set loading to false
+          if (state.user) {
+            state.loading = false;
+            
+            // Ensure admin status is set correctly
+            if (state.user.is_super_admin === true) {
+              useAdminStore.getState().setAdminStatus(true);
+            }
+          }
+          
+          // Initialize in the background but don't block the UI on it
+          setTimeout(() => {
+            state.initialize().catch(err => {
+              console.error('Error during auth initialization:', err);
+              // Don't sign out the user on initialization errors
+            });
+          }, 1000);
+          
           window.addEventListener('storage', async (event) => {
             if (event.key === getStorageKey()) {
               const { data } = await callNetlifyFunction('getSession');
-              state.setUser(data?.user || null);
+              await state.setUser(data?.user || null);
             }
           });
+          
+          // Return the rehydrated state
+          return state;
         }
       }
     }
   )
 );
 
-// Initialize auth state
-useAuthStore.getState().initialize();
+// Initialize auth state - execute but don't wait
+useAuthStore.getState().initialize().catch(err => {
+  console.error('Error during initial auth initialization:', err);
+});

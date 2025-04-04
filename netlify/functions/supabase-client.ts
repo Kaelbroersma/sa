@@ -12,18 +12,24 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 // Initialize Supabase client with service role key for admin operations
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+    // 30 day session for improved persistence  
+    storageKey: 'carnimore-admin-key',
+    flowType: 'pkce' // More secure flow type for token exchange
   }
 });
 
-// Create a separate client for auth operations that doesn't persist sessions
+// Create a separate client for auth operations
 const authClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+    // 30 day session for improved persistence
+    storageKey: 'carnimore-auth-key',
+    flowType: 'pkce' // More secure flow type for token exchange
   }
 });
 
@@ -175,29 +181,290 @@ export const handler: Handler = async (event) => {
           };
         }
 
+      case 'checkDatabaseSchema':
+        try {
+          console.log('Checking database schema...');
+          
+          // Check users table structure
+          const { data: usersColumns, error: usersError } = await supabase
+            .rpc('get_table_columns', { table_name: 'users' });
+          
+          if (usersError) {
+            console.error('Error checking users table schema:', {
+              error: usersError,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Fallback to direct queries if rpc fails
+            const { data: debugUsersData, error: debugUsersError } = await supabase
+              .from('users')
+              .select('*')
+              .limit(1);
+              
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ 
+                message: 'RPC failed but retrieved sample data',
+                error: usersError.message,
+                sampleData: debugUsersData ? debugUsersData[0] : null,
+                sampleKeys: debugUsersData && debugUsersData.length > 0 ? Object.keys(debugUsersData[0]) : []
+              })
+            };
+          }
+          
+          // Get super admin users directly
+          const { data: superAdminUsers, error: superAdminError } = await supabase
+            .from('users')
+            .select('user_id, email, is_super_admin, super_admin, admin, user_role')
+            .eq('is_super_admin', true)
+            .limit(5);
+            
+          // Try another query with a different column name if first one fails
+          const { data: backupSuperAdminUsers, error: backupSuperAdminError } = await supabase
+            .from('users')
+            .select('user_id, email, is_super_admin, super_admin, admin, user_role')
+            .eq('super_admin', true)
+            .limit(5);
+          
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ 
+              columns: usersColumns,
+              superAdminUsers,
+              superAdminError: superAdminError?.message,
+              backupSuperAdminUsers,
+              backupSuperAdminError: backupSuperAdminError?.message
+            })
+          };
+        } catch (error: any) {
+          console.error('Error checking database schema:', {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to check database schema',
+                details: error.message
+              }
+            })
+          };
+        }
+
+      case 'checkAdminStatus':
+        try {
+          if (!payload || !payload.userId) {
+            throw new Error('Missing user ID in payload');
+          }
+
+          console.log('Checking admin status for user:', {
+            userId: payload.userId,
+            timestamp: new Date().toISOString()
+          });
+
+          // First do a raw query to see the actual values in the table
+          const { data: rawUserData, error: rawUserError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('user_id', payload.userId)
+            .single();
+
+          if (rawUserError) {
+            console.error('Error in raw user data query:', {
+              error: rawUserError,
+              timestamp: new Date().toISOString()
+            });
+          } else {
+            console.log('Raw user data from database:', {
+              rawUserData,
+              allKeys: rawUserData ? Object.keys(rawUserData) : [],
+              is_super_admin_value: rawUserData?.is_super_admin,
+              is_super_admin_type: typeof rawUserData?.is_super_admin,
+              timestamp: new Date().toISOString()
+            });
+          }
+
+          // Try to get the user with all possible super admin column names
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select(`
+              user_id,
+              email,
+              is_super_admin,
+              user_role
+            `)
+            .eq('user_id', payload.userId)
+            .single();
+
+          if (userError) {
+            console.error('Error fetching user data:', {
+              error: userError,
+              timestamp: new Date().toISOString()
+            });
+            throw userError;
+          }
+
+          // Log stringified version to see exactly what's in the values
+          console.log('User data for admin check (stringified):', {
+            userData: JSON.stringify(userData),
+            is_super_admin: JSON.stringify(userData?.is_super_admin),
+            timestamp: new Date().toISOString()
+          });
+
+          const isAdmin = userData?.is_super_admin === true;
+          
+          console.log('Final admin status determination:', {
+            isAdmin,
+            rawValue: userData?.is_super_admin,
+            equalToTrue: userData?.is_super_admin === true,
+            type: typeof userData?.is_super_admin,
+            timestamp: new Date().toISOString()
+          });
+
+          // Update the user directly to set is_super_admin to true for testing
+          if (payload.setAdmin === true) {
+            const { data: updateData, error: updateError } = await supabase
+              .from('users')
+              .update({ is_super_admin: true })
+              .eq('user_id', payload.userId)
+              .select()
+              .single();
+
+            if (updateError) {
+              console.error('Error updating super admin status:', {
+                error: updateError,
+                timestamp: new Date().toISOString()
+              });
+              throw updateError;
+            }
+
+            console.log('Updated super admin status:', {
+              updateData,
+              is_super_admin: updateData?.is_super_admin,
+              timestamp: new Date().toISOString()
+            });
+
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ 
+                data: { 
+                  before: userData,
+                  after: updateData,
+                  message: 'Super admin status updated'
+                }
+              })
+            };
+          }
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ 
+              data: { 
+                user: userData,
+                isAdmin,
+                rawValue: userData?.is_super_admin
+              }
+            })
+          };
+        } catch (error: any) {
+          console.error('Error checking admin status:', {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to check admin status',
+                details: error.message
+              }
+            })
+          };
+        }
+
       case 'getSession':
         try {
           // Get session from auth client
-          const { data: { session }, error: sessionError } = await authClient.auth.getSession();
+          let { data: { session }, error: sessionError } = await authClient.auth.getSession();
           if (sessionError) {
             console.error('Error getting session:', {
               error: sessionError,
               timestamp: new Date().toISOString()
             });
-            throw sessionError;
+            
+            // Return a more graceful error that won't cause immediate logout
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({ 
+                error: { 
+                  message: 'Session retrieval failed temporarily',
+                  details: sessionError.message
+                },
+                data: { sessionStatus: 'error' } 
+              })
+            };
           }
 
-          // If no session or session is expired, return null
-          if (!session || new Date(session.expires_at!) < new Date()) {
-            console.log('No valid session found:', {
+          // If no session, return null but don't force immediate logout
+          if (!session) {
+            console.log('No session found:', {
               timestamp: new Date().toISOString()
             });
             return {
               statusCode: 200,
               headers,
-              body: JSON.stringify({ data: { user: null } })
+              body: JSON.stringify({ 
+                data: { 
+                  sessionStatus: 'missing',
+                  sessionInfo: null
+                } 
+              })
             };
           }
+
+          // If session is expired, try to refresh it instead of immediately invalidating
+          if (session.expires_at && new Date(session.expires_at) < new Date()) {
+            try {
+              const { data: refreshData, error: refreshError } = await authClient.auth.refreshSession();
+              
+              if (!refreshError && refreshData.session) {
+                session = refreshData.session;
+                console.log('Session successfully refreshed:', {
+                  userId: session.user.id,
+                  expires_at: session.expires_at,
+                  timestamp: new Date().toISOString()
+                });
+              } else {
+                console.warn('Session refresh failed, but continuing with existing session:', {
+                  error: refreshError?.message,
+                  userId: session.user.id,
+                  timestamp: new Date().toISOString()
+                });
+              }
+            } catch (refreshErr) {
+              console.warn('Error during session refresh:', {
+                error: refreshErr,
+                timestamp: new Date().toISOString()
+              });
+              // Continue with original session anyway
+            }
+          }
+
+          // Log session details for debugging
+          console.log('Session details:', {
+            userId: session.user.id,
+            expires_at: session.expires_at,
+            expiresIn: session.expires_at ? new Date(session.expires_at).getTime() - new Date().getTime() : 'unknown',
+            timestamp: new Date().toISOString()
+          });
 
           // Validate session token
           const { data: tokenData, error: tokenError } = await authClient.auth.getUser(session.access_token);
@@ -214,19 +481,84 @@ export const handler: Handler = async (event) => {
           }
 
           // Get user data including super admin status using main client
+          console.log('Attempting to fetch user data:', {
+            userId: session.user.id,
+            timestamp: new Date().toISOString()
+          });
+
+          // Raw SQL query for debugging
+          const { data: debugData, error: debugError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          console.log('Raw debug data from database:', {
+            allData: debugData, 
+            keys: debugData ? Object.keys(debugData) : [],
+            timestamp: new Date().toISOString(),
+            error: debugError
+          });
+
+          // Now try the normal query
           const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('is_super_admin, first_name, last_name, user_role, account_status')
+            .select(`
+              user_id,
+              email,
+              first_name,
+              last_name,
+              user_role,
+              account_status,
+              is_super_admin,
+              super_admin,
+              admin,
+              accepted_terms,
+              marketing_opt_in
+            `)
             .eq('user_id', session.user.id)
             .single();
 
           if (userError) {
             console.error('Error getting user data:', {
               error: userError,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              userId: session.user.id,
+              query: 'SELECT * FROM users WHERE user_id = :userId'
             });
             throw userError;
           }
+
+          // Log the raw user data from database
+          console.log('Raw user data from database:', {
+            fullUserData: userData,
+            userId: session.user.id,
+            userIdFromData: userData?.user_id,
+            is_super_admin_raw: userData?.is_super_admin,
+            super_admin_raw: userData?.super_admin,
+            admin_raw: userData?.admin,
+            is_super_admin_type: typeof userData?.is_super_admin,
+            timestamp: new Date().toISOString()
+          });
+
+          if (!userData) {
+            console.error('No user data found:', {
+              timestamp: new Date().toISOString(),
+              userId: session.user.id
+            });
+            throw new Error('User data not found');
+          }
+
+          // Determine if the user is a super admin
+          // Make sure we're doing a direct comparison with true to ensure boolean check
+          const isSuperAdmin = userData?.is_super_admin === true;
+
+          console.log('Super admin status in getSession:', {
+            is_super_admin: userData?.is_super_admin,
+            is_super_admin_type: typeof userData?.is_super_admin,
+            isSuperAdmin,
+            timestamp: new Date().toISOString()
+          });
 
           // Check account status
           if (userData.account_status !== 'active') {
@@ -246,21 +578,58 @@ export const handler: Handler = async (event) => {
             };
           }
 
-          // Merge user data
+          // Merge user data and ensure is_super_admin is properly set as a boolean
           const enrichedUser = {
             ...session.user,
-            ...userData
+            user_metadata: {
+              first_name: userData.first_name,
+              last_name: userData.last_name,
+              acceptedTerms: userData.accepted_terms,
+              email_verified: session.user.email_confirmed_at ? true : false
+            },
+            // Explicitly set this as a boolean using strict comparison
+            is_super_admin: isSuperAdmin,
+            user_role: userData.user_role,
+            account_status: userData.account_status,
+            email: userData.email || session.user.email
           };
 
-          console.log('Valid session found:', {
+          // Log the enriched user object
+          console.log('Enriched user object:', {
             userId: enrichedUser.id,
+            is_super_admin: enrichedUser.is_super_admin,
+            is_super_admin_type: typeof enrichedUser.is_super_admin,
+            userMetadata: enrichedUser.user_metadata,
+            userRole: userData.user_role,
+            accountStatus: userData.account_status,
             timestamp: new Date().toISOString()
           });
 
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ data: { user: enrichedUser } })
+            body: JSON.stringify({ 
+              data: { 
+                user: enrichedUser,
+                sessionInfo: {
+                  exists: true,
+                  expiresAt: session.expires_at,
+                  expiresIn: session.expires_at ? new Date(session.expires_at).getTime() - new Date().getTime() : null,
+                  currentTime: new Date().toISOString(),
+                  token: session.access_token ? '[REDACTED]' : null,
+                  refreshToken: session.refresh_token ? '[REDACTED]' : null
+                },
+                debug: {
+                  originalUserData: userData,
+                  sessionUser: session.user,
+                  isSuperAdminRaw: userData.is_super_admin,
+                  isSuperAdminProcessed: enrichedUser.is_super_admin,
+                  userMetadata: enrichedUser.user_metadata,
+                  userRole: userData.user_role,
+                  accountStatus: userData.account_status
+                }
+              }
+            })
           };
         } catch (error: any) {
           console.error('Error in getSession:', {

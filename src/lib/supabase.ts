@@ -12,7 +12,8 @@ async function callNetlifyFunction(action: string, payload?: any) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ action, payload })
+      body: JSON.stringify({ action, payload }),
+      credentials: 'include'
     });
 
     // Log response status

@@ -35,6 +35,7 @@ import AgeVerification from './components/AgeVerification';
 import ScrollToTop from './components/ScrollToTop';
 import CartDrawer from './components/Cart/CartDrawer';
 import TrainingLandingPage from './pages/training/TrainingLandingPage';
+import ProtectedRoute from './components/Admin/ProtectedRoute';
 
 // Admin imports
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -137,16 +138,18 @@ function App() {
                     <Route path="/account/orders" element={<AccountOrdersPage />} />
                     <Route path="/account/wishlist" element={<AccountWishlistPage />} />
                     
-                    {/* Admin Dashboard Routes */}
-                    <Route path="/admin" element={<AdminDashboard />}>
-                      <Route index element={<DashboardOverview />} />
-                      <Route path="overview" element={<DashboardOverview />} />
-                      <Route path="sales" element={<SalesPage />} />
-                      <Route path="users" element={<UsersPage />} />
+                    {/* Admin Dashboard Routes - Protected by ProtectedRoute */}
+                    <Route path="/admin" element={<ProtectedRoute />}>
+                      <Route element={<AdminDashboard />}>
+                        <Route index element={<DashboardOverview />} />
+                        <Route path="overview" element={<DashboardOverview />} />
+                        <Route path="sales" element={<SalesPage />} />
+                        <Route path="users" element={<UsersPage />} />
                         <Route path="products" element={<ProductsPage />} />
                         <Route path="categories" element={<CategoriesPage />} />
-                      <Route path="blog" element={<BlogPage />} />
-                      <Route path="blog/settings" element={<SettingsPage />} />
+                        <Route path="blog" element={<BlogPage />} />
+                        <Route path="blog/settings" element={<SettingsPage />} />
+                      </Route>
                     </Route>
                     
                     <Route path="/training" element={<TrainingPage />} />
