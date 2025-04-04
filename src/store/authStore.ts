@@ -5,27 +5,35 @@ import { callNetlifyFunction } from '../lib/supabase';
 import { useCartStore } from './cartStore';
 import type { AuthState, AuthUser } from '../types/auth';
 
-// Create a browser-specific storage key
-const getStorageKey = () => {
-  const browserKey = `${navigator.userAgent}-${window.innerWidth}-${window.innerHeight}`;
-  return `auth-storage-${btoa(browserKey)}`;
+// Create a unique browser fingerprint
+const getBrowserFingerprint = () => {
+  const screenRes = `${window.screen.width}x${window.screen.height}`;
+  const colorDepth = window.screen.colorDepth;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const language = navigator.language;
+  const platform = navigator.platform;
+  
+  return btoa(`${screenRes}-${colorDepth}-${timezone}-${language}-${platform}-${navigator.userAgent}`);
 };
 
-type AuthStore = AuthState;
+// Create a browser-specific storage key
+const getStorageKey = () => {
+  return `auth-storage-${getBrowserFingerprint()}`;
+};
+
+interface AuthStore extends AuthState {
+  initialize: () => Promise<void>;
+  setUser: (user: AuthUser | null) => Promise<void>;
+}
+
 type AuthPersist = (
   config: StateCreator<AuthStore>,
   options: PersistOptions<AuthStore>
 ) => StateCreator<AuthStore>;
 
-// Define the state setter type
-type SetState = (
-  partial: AuthStore | Partial<AuthStore> | ((state: AuthStore) => AuthStore | Partial<AuthStore>),
-  replace?: boolean | undefined
-) => void;
-
 export const useAuthStore = create<AuthStore>(
   (persist as AuthPersist)(
-    (set: SetState) => ({
+    (set) => ({
       user: null,
       loading: true,
       error: null,
@@ -34,33 +42,56 @@ export const useAuthStore = create<AuthStore>(
         try {
           // Get initial session from Netlify function
           const { data } = await callNetlifyFunction('getSession');
-          console.log('Auth store - Raw session data:', data);
-          console.log('Auth store - User data from session:', data?.user);
           
-          set({ user: data?.user as AuthUser || null, loading: false });
-          console.log('Auth store - Set user data:', data?.user);
+          // Validate browser fingerprint if user exists
+          if (data?.user) {
+            const storedFingerprint = localStorage.getItem('browser-fingerprint');
+            const currentFingerprint = getBrowserFingerprint();
+            
+            if (storedFingerprint && storedFingerprint !== currentFingerprint) {
+              console.warn('Browser fingerprint mismatch, signing out');
+              await callNetlifyFunction('signOut');
+              set({ user: null, loading: false });
+              return;
+            }
+            
+            // Store current fingerprint
+            localStorage.setItem('browser-fingerprint', currentFingerprint);
+          }
+          
+          set({ user: data?.user || null, loading: false });
           
           // Sync cart if user is logged in
           if (data?.user) {
             await useCartStore.getState().syncWithDatabase();
           }
 
-          // Listen for auth changes via polling
+          // Set up auth state polling
+          let lastCheck = Date.now();
           const checkAuth = async () => {
             try {
+              // Throttle checks to prevent excessive calls
+              const now = Date.now();
+              if (now - lastCheck < 30000) { // 30 seconds minimum between checks
+                return;
+              }
+              lastCheck = now;
+
               const { data } = await callNetlifyFunction('getSession');
               const currentUser = useAuthStore.getState().user;
               
               // Handle user state changes
-              if (data?.user?.id !== currentUser?.id) {
-                console.log('Auth store - User state changed. New user data:', data?.user);
-                set({ user: data?.user as AuthUser || null });
+              if (!data?.user && currentUser) {
+                console.log('User signed out in another tab/window');
+                set({ user: null });
+                await useCartStore.getState().clearCart();
+              } else if (data?.user?.id !== currentUser?.id) {
+                console.log('User state changed');
+                set({ user: data?.user || null });
                 
                 if (data?.user) {
-                  // User logged in - sync cart
                   await useCartStore.getState().syncWithDatabase();
                 } else {
-                  // User logged out - clear cart
                   await useCartStore.getState().clearCart();
                 }
               }
@@ -69,37 +100,52 @@ export const useAuthStore = create<AuthStore>(
             }
           };
 
-          // Start polling
-          const interval = setInterval(checkAuth, 60 * 1000);
-          
-          // Return cleanup function without executing it
-          return () => clearInterval(interval);
+          // Start polling with cleanup
+          const interval = setInterval(checkAuth, 60000); // Check every minute
+          window.addEventListener('beforeunload', () => clearInterval(interval));
         } catch (error: any) {
           console.error('Auth initialization error:', error);
           set({ error: error.message, loading: false });
         }
       },
 
-      setUser: (user: AuthUser | null) => {
-        console.log('Auth store - Setting user:', user);
+      setUser: async (user: AuthUser | null) => {
+        if (user) {
+          // Store browser fingerprint on login
+          localStorage.setItem('browser-fingerprint', getBrowserFingerprint());
+        } else {
+          // Clear fingerprint on logout
+          localStorage.removeItem('browser-fingerprint');
+        }
+        
         set({ user, loading: false });
         
-        // Sync cart when user changes
         if (user) {
-          useCartStore.getState().syncWithDatabase();
+          await useCartStore.getState().syncWithDatabase();
         } else {
-          useCartStore.getState().clearCart();
+          await useCartStore.getState().clearCart();
         }
       }
     }),
     {
-      name: getStorageKey(), // Use browser-specific storage key
-      partialize: (state: AuthStore) => ({ 
+      name: getStorageKey(),
+      partialize: (state: AuthStore) => ({
         user: state.user,
         loading: state.loading,
         error: state.error
-      }), // Only persist necessary state
+      } as Partial<AuthStore>),
       version: 1,
+      // Add storage event listener to handle cross-tab synchronization
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          window.addEventListener('storage', async (event) => {
+            if (event.key === getStorageKey()) {
+              const { data } = await callNetlifyFunction('getSession');
+              state.setUser(data?.user || null);
+            }
+          });
+        }
+      }
     }
   )
 );

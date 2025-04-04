@@ -187,98 +187,80 @@ export const handler: Handler = async (event) => {
             throw sessionError;
           }
 
-          if (session?.user) {
-            console.log('Session found:', {
-              userId: session.user.id,
+          // If no session or session is expired, return null
+          if (!session || new Date(session.expires_at!) < new Date()) {
+            console.log('No valid session found:', {
               timestamp: new Date().toISOString()
             });
-
-            // Get user data including super admin status using main client
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('is_super_admin, first_name, last_name, user_role, account_status')
-              .eq('user_id', session.user.id)
-              .single();
-
-            if (userError) {
-              console.error('Error fetching user data:', {
-                error: userError,
-                userId: session.user.id,
-                timestamp: new Date().toISOString()
-              });
-              throw userError;
-            }
-
-            if (!userData) {
-              console.error('User data not found:', {
-                userId: session.user.id,
-                timestamp: new Date().toISOString()
-              });
-              throw new Error('User data not found');
-            }
-
-            // Check if account is active
-            if (userData.account_status !== 'active') {
-              console.log('Account not active:', {
-                userId: session.user.id,
-                status: userData.account_status,
-                timestamp: new Date().toISOString()
-              });
-              
-              // Sign out the user if account is not active
-              await authClient.auth.signOut();
-              
-              return {
-                statusCode: 403,
-                headers,
-                body: JSON.stringify({ 
-                  error: { 
-                    message: 'Account is not active',
-                    details: `Account status: ${userData.account_status}`
-                  }
-                })
-              };
-            }
-
-            // Merge user data with session
-            const enrichedUser = {
-              ...session.user,
-              is_super_admin: userData.is_super_admin || false,
-              user_role: userData.user_role || 'customer',
-              user_metadata: {
-                ...session.user.user_metadata,
-                first_name: userData.first_name || session.user.user_metadata?.first_name,
-                last_name: userData.last_name || session.user.user_metadata?.last_name
-              }
-            };
-
-            console.log('Enriched user data:', {
-              userId: enrichedUser.id,
-              isSuperAdmin: enrichedUser.is_super_admin,
-              userRole: enrichedUser.user_role,
-              timestamp: new Date().toISOString()
-            });
-
             return {
               statusCode: 200,
               headers,
-              body: JSON.stringify({ 
-                data: {
-                  ...session,
-                  user: enrichedUser
-                }
-              })
+              body: JSON.stringify({ data: { user: null } })
             };
           }
 
-          console.log('No session found:', {
+          // Validate session token
+          const { data: tokenData, error: tokenError } = await authClient.auth.getUser(session.access_token);
+          if (tokenError || !tokenData.user) {
+            console.error('Invalid session token:', {
+              error: tokenError,
+              timestamp: new Date().toISOString()
+            });
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ data: { user: null } })
+            };
+          }
+
+          // Get user data including super admin status using main client
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('is_super_admin, first_name, last_name, user_role, account_status')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (userError) {
+            console.error('Error getting user data:', {
+              error: userError,
+              timestamp: new Date().toISOString()
+            });
+            throw userError;
+          }
+
+          // Check account status
+          if (userData.account_status !== 'active') {
+            console.log('Inactive account accessed:', {
+              userId: session.user.id,
+              status: userData.account_status,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Sign out the user
+            await authClient.auth.signOut();
+            
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ data: { user: null } })
+            };
+          }
+
+          // Merge user data
+          const enrichedUser = {
+            ...session.user,
+            ...userData
+          };
+
+          console.log('Valid session found:', {
+            userId: enrichedUser.id,
             timestamp: new Date().toISOString()
           });
 
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ data: null })
+            body: JSON.stringify({ data: { user: enrichedUser } })
           };
         } catch (error: any) {
           console.error('Error in getSession:', {
